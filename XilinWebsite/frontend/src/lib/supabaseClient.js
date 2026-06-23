@@ -21,6 +21,22 @@ import { supabase } from './supabase'
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// PUBLIC STATS
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Public: get counts of students and teachers for the homepage stats section. */
+export async function getPublicStats() {
+  const [students, teachers] = await Promise.all([
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'teacher'),
+  ])
+  if (students.error) throw students.error
+  if (teachers.error) throw teachers.error
+  return { studentCount: students.count ?? 0, teacherCount: teachers.count ?? 0 }
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // AUTH
 // ─────────────────────────────────────────────────────────────────────────────
 

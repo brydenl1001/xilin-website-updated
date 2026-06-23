@@ -12,10 +12,4 @@ export const schoolInfo = {
   phone: '(312) 555-0190',
   email: 'info@academia.edu',
   principalName: 'Dr. Amelia Richardson',
-  stats: [
-    { label: 'Students Enrolled', value: '1,248' },
-    { label: 'Expert Faculty', value: '96' },
-    { label: 'Years of Excellence', value: '38+' },
-    { label: 'Graduation Rate', value: '99%' },
-  ],
 }

@@ -1,22 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { schoolInfo } from '../../lib/mockData'
-import { listPublicAnnouncements } from '../../lib/supabaseClient'
+import { listPublicAnnouncements, getPublicStats } from '../../lib/supabaseClient'
 import { Badge, Button } from '../../components/ui'
-import { ArrowRight, MapPin, Phone, Mail, BookOpen, Users, Award, TrendingUp } from 'lucide-react'
-
-const STAT_ICONS = [BookOpen, Users, Award, TrendingUp]
+import { ArrowRight, MapPin, Phone, Mail, BookOpen, Users, Award } from 'lucide-react'
 const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
 
 export default function Home() {
   const [publicNews, setPublicNews] = useState([])
   const [loading, setLoading] = useState(true)
+  const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0 })
 
   useEffect(() => {
     listPublicAnnouncements()
       .then(data => setPublicNews(data.slice(0, 3)))
       .catch(err => console.error('Failed to load announcements:', err))
       .finally(() => setLoading(false))
+    getPublicStats()
+      .then(setStats)
+      .catch(err => console.error('Failed to load stats:', err))
   }, [])
 
   return (
@@ -48,19 +50,20 @@ export default function Home() {
 
       {/* Stats */}
       <section className="bg-white border-b border-slate-100">
-        <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-2 md:grid-cols-4 gap-8">
-          {schoolInfo.stats.map((s, i) => {
-            const Icon = STAT_ICONS[i]
-            return (
-              <div key={s.label} className="text-center">
-                <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center mx-auto mb-3">
-                  <Icon size={18} className="text-yellow-600" />
-                </div>
-                <p className="font-display text-3xl text-slate-900">{s.value}</p>
-                <p className="text-sm text-slate-400 mt-1">{s.label}</p>
+        <div className="max-w-6xl mx-auto px-6 py-12 grid grid-cols-3 gap-8">
+          {[
+            { label: 'Students Enrolled', value: stats.studentCount.toLocaleString(), Icon: BookOpen },
+            { label: 'Expert Faculty', value: stats.teacherCount.toLocaleString(), Icon: Users },
+            { label: 'Years of Excellence', value: `${new Date().getFullYear() - schoolInfo.founded}+`, Icon: Award },
+          ].map(s => (
+            <div key={s.label} className="text-center">
+              <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center mx-auto mb-3">
+                <s.Icon size={18} className="text-yellow-600" />
               </div>
-            )
-          })}
+              <p className="font-display text-3xl text-slate-900">{s.value}</p>
+              <p className="text-sm text-slate-400 mt-1">{s.label}</p>
+            </div>
+          ))}
         </div>
       </section>
 
