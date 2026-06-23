@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { publicAnnouncements } from '../../lib/mockData'
+import { useState, useEffect } from 'react'
+import { listPublicAnnouncements } from '../../lib/supabaseClient'
 import { Lock } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
@@ -10,12 +10,18 @@ const CAT_BADGE = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-1
 export default function PublicNews() {
   const [filter, setFilter] = useState('all')
   const [expanded, setExpanded] = useState(null)
+  const [announcements, setAnnouncements] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-  const allAnn = publicAnnouncements
-  const publicOnly = allAnn.filter(a => a.is_public)
-  const privateCount = allAnn.filter(a => !a.is_public).length
+  useEffect(() => {
+    listPublicAnnouncements()
+      .then(setAnnouncements)
+      .catch(err => setError(err.message))
+      .finally(() => setLoading(false))
+  }, [])
 
-  const filtered = publicOnly.filter(a => filter === 'all' || a.category === filter)
+  const filtered = announcements.filter(a => filter === 'all' || a.category === filter)
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
@@ -25,11 +31,11 @@ export default function PublicNews() {
         <p className="text-slate-500">Stay up to date with everything happening at Academia.</p>
       </div>
 
-      {/* Private notice banner */}
+      {/* Sign-in nudge */}
       <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-7 flex items-center gap-3">
         <Lock size={16} className="text-slate-400 flex-shrink-0" />
         <p className="text-sm text-slate-500">
-          {privateCount} internal announcement{privateCount !== 1 ? 's are' : ' is'} only visible to staff and students.{' '}
+          Staff, students, and families have access to additional internal announcements.{' '}
           <Link to="/login" className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2">Sign in</Link> to see all updates.
         </p>
       </div>
@@ -44,14 +50,16 @@ export default function PublicNews() {
               filter === c ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            {c === 'all' ? `All (${publicOnly.length})` : `${c} (${publicOnly.filter(a => a.category === c).length})`}
+            {c === 'all' ? `All (${announcements.length})` : `${c} (${announcements.filter(a => a.category === c).length})`}
           </button>
         ))}
       </div>
 
       {/* Announcement list */}
       <div className="space-y-3">
-        {filtered.length === 0 && (
+        {loading && <p className="text-slate-400 text-sm text-center py-12">Loading announcements…</p>}
+        {error && <p className="text-red-500 text-sm text-center py-12">Failed to load: {error}</p>}
+        {!loading && !error && filtered.length === 0 && (
           <p className="text-slate-400 text-sm text-center py-12">No announcements in this category.</p>
         )}
         {filtered.map(ann => (
@@ -66,7 +74,7 @@ export default function PublicNews() {
                 {ann.category}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mb-3">{ann.author} · {ann.published_at}</p>
+            <p className="text-xs text-slate-400 mb-3">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
             {expanded === ann.id && (
               <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3 animate-fade-in">
                 {ann.body}

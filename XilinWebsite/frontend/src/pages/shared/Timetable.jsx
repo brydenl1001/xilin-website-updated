@@ -1,79 +1,97 @@
-import { mockTimetable } from '../../lib/mockData'
-import { Card, PageHeader } from '../../components/ui'
+import { useState, useEffect } from 'react'
+import { listMyClasses, listClasses } from '../../lib/supabaseClient'
+import { Card, PageHeader, Badge } from '../../components/ui'
+import { useAuth } from '../../context/AuthContext'
+import { AlertTriangle } from 'lucide-react'
 
-const SUBJECT_COLOR = {
-  'Mathematics':        'bg-blue-50 text-blue-700 border-blue-200',
-  'English Literature': 'bg-purple-50 text-purple-700 border-purple-200',
-  'English':            'bg-purple-50 text-purple-700 border-purple-200',
-  'Physics':            'bg-amber-50 text-amber-700 border-amber-200',
-  'History':            'bg-emerald-50 text-emerald-700 border-emerald-200',
-  'Art and Design':     'bg-pink-50 text-pink-700 border-pink-200',
-}
+/**
+ * NOTE: The current schema has no `schedule` / `timetable` table — `classes`
+ * stores course + semester + teacher, but not which day/period it meets.
+ * Until that table exists, this page lists the student/teacher's classes
+ * for the active semester instead of a day-by-day grid.
+ *
+ * To support a real day/period grid, add a table along these lines:
+ *
+ *   create table class_schedule (
+ *     id          uuid primary key default uuid_generate_v4(),
+ *     class_id    uuid references classes(id) on delete cascade,
+ *     day_of_week int not null,        -- 0=Sunday .. 6=Saturday
+ *     start_time  time not null,
+ *     end_time    time not null,
+ *     room        text
+ *   );
+ *
+ * Then this page would fetch class_schedule joined to classes(courses(*))
+ * and render a real grid instead of the list below.
+ */
 
-const TODAY_IDX = ['Monday','Tuesday','Wednesday','Thursday','Friday'].indexOf(
-  new Date().toLocaleDateString('en-US', { weekday: 'long' })
-)
+export default function Timetable({ subtitle = 'Your classes this semester' }) {
+  const { user } = useAuth()
+  const [classes, setClasses] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
 
-export default function Timetable({ subtitle = 'Grade 10-A — Weekly schedule' }) {
-  const { days, periods } = mockTimetable
+  useEffect(() => {
+    const load = async () => {
+      try {
+        if (user.role === 'teacher') {
+          const data = await listMyClasses(user.id)
+          setClasses(data.map(d => d.classes))
+        } else {
+          // Student/parent: list all classes (RLS scopes appropriately;
+          // for a true "my enrolled classes" view, join through enrollments)
+          const data = await listClasses()
+          setClasses(data)
+        }
+      } catch (err) {
+        setError(err.message)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [user])
 
   return (
     <div className="max-w-5xl animate-fade-in">
       <PageHeader title="Timetable" subtitle={subtitle} />
 
-      {TODAY_IDX >= 0 && (
-        <div className="mb-6">
-          <p className="text-xs font-medium text-slate-400 uppercase tracking-wide mb-3">Today — {days[TODAY_IDX]}</p>
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {periods.map((p, i) => {
-              const subj = p.subjects[TODAY_IDX]
-              const color = SUBJECT_COLOR[subj] || 'bg-slate-50 text-slate-600 border-slate-200'
-              return (
-                <div key={i} className={`flex-shrink-0 border rounded-xl p-3 min-w-[130px] ${color}`}>
-                  <p className="text-[10px] font-medium opacity-60 mb-1">{p.time}</p>
-                  <p className="text-sm font-medium leading-tight">{subj}</p>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+        <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-amber-700">
+          Day-by-day period scheduling isn't in the database yet — this shows your assigned classes
+          for the active semester instead. Add a <code className="text-xs bg-amber-100 px-1 rounded">class_schedule</code> table
+          to enable a full weekly grid.
+        </p>
+      </div>
 
-      <Card className="!p-0 overflow-x-auto">
-        <table className="w-full min-w-[640px]">
-          <thead>
-            <tr className="border-b border-slate-100 bg-slate-50">
-              <th className="text-left px-5 py-3 text-xs font-medium text-slate-400 uppercase tracking-wide w-28">Time</th>
-              {days.map((day, i) => (
-                <th key={day} className={`text-left px-4 py-3 text-xs font-medium uppercase tracking-wide ${i === TODAY_IDX ? 'text-yellow-600' : 'text-slate-400'}`}>
-                  {day}
-                  {i === TODAY_IDX && <span className="ml-1.5 text-[9px] bg-yellow-100 text-yellow-700 px-1.5 py-0.5 rounded-full normal-case font-semibold">Today</span>}
-                </th>
+      {loading && <p className="text-slate-400 text-sm text-center py-12">Loading…</p>}
+      {error && <p className="text-red-500 text-sm text-center py-12">Failed to load: {error}</p>}
+
+      {!loading && !error && (
+        <Card className="!p-0 overflow-hidden">
+          <div className="px-5 py-4 border-b border-slate-100">
+            <h3 className="font-display text-base text-slate-900">Your Classes</h3>
+          </div>
+          {classes.length === 0 ? (
+            <p className="text-center text-slate-400 py-12 text-sm">No classes found for the active semester.</p>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {classes.map(cls => (
+                <div key={cls.id} className="flex items-center justify-between px-5 py-4">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{cls.name}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {cls.courses?.name} · {cls.semesters?.name} {cls.room ? `· ${cls.room}` : ''}
+                    </p>
+                  </div>
+                  <Badge variant="academics">{cls.courses?.subject_area || 'General'}</Badge>
+                </div>
               ))}
-            </tr>
-          </thead>
-          <tbody>
-            {periods.map((period, pi) => (
-              <tr key={pi} className="border-b border-slate-100 last:border-0 hover:bg-slate-50/50">
-                <td className="px-5 py-3 text-xs text-slate-400 font-medium whitespace-nowrap">{period.time}</td>
-                {period.subjects.map((subj, si) => {
-                  const color = SUBJECT_COLOR[subj] || 'bg-slate-50 text-slate-600 border-slate-200'
-                  return (
-                    <td key={si} className="px-3 py-2.5">
-                      <span className={`inline-block border rounded-lg px-2.5 py-1.5 text-xs font-medium whitespace-nowrap ${color} ${si === TODAY_IDX ? 'ring-1 ring-offset-1 ring-yellow-300' : ''}`}>
-                        {subj}
-                      </span>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <div className="px-5 py-2 bg-slate-50 border-t border-slate-100 text-xs text-slate-400 italic">
-          Break: 10:00–10:20 · Lunch: 12:20–13:00
-        </div>
-      </Card>
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   )
 }

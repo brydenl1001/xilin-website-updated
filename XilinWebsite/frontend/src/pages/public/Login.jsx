@@ -4,33 +4,22 @@ import { useAuth } from '../../context/AuthContext'
 import { Button, Input } from '../../components/ui'
 import { ArrowLeft } from 'lucide-react'
 
-const DEMO_ROLES = [
-  { role: 'admin',   desc: 'Full school management' },
-  { role: 'teacher', desc: 'Classes, grades, attendance' },
-  { role: 'student', desc: 'Personal academic records' },
-  { role: 'parent',  desc: "Monitor child's progress" },
-]
-
 export default function Login() {
-  const { signIn, signInWithRole } = useAuth()
+  const { signIn } = useAuth()
   const navigate = useNavigate()
-  const [email, setEmail]       = useState('jane@academia.edu')
-  const [password, setPassword] = useState('password')
+  const [email, setEmail]       = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
+    setError('')
     const { error } = await signIn(email, password)
     setLoading(false)
     if (error) setError(error.message)
     else navigate('/dashboard')
-  }
-
-  const handleDemo = (role) => {
-    signInWithRole(role)
-    navigate('/dashboard')
   }
 
   return (
@@ -83,25 +72,9 @@ export default function Login() {
             </Button>
           </form>
 
-          <div className="relative mb-6">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-slate-200" /></div>
-            <div className="relative flex justify-center">
-              <span className="px-3 bg-slate-50 text-xs text-slate-400">or try a demo account</span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            {DEMO_ROLES.map(({ role, desc }) => (
-              <button
-                key={role}
-                onClick={() => handleDemo(role)}
-                className="group border border-slate-200 rounded-xl p-3 text-left hover:border-yellow-300 hover:bg-yellow-50/50 transition-all"
-              >
-                <p className="text-sm font-medium text-slate-900 capitalize">{role}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
-              </button>
-            ))}
-          </div>
+          <p className="text-xs text-slate-400 text-center">
+            Forgot your password? Contact the school office for a reset.
+          </p>
         </div>
       </div>
     </div>

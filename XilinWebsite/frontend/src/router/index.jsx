@@ -44,12 +44,14 @@ import ParentPayments        from '../pages/parent/Payments'
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) return <div className="flex items-center justify-center h-screen text-slate-400 text-sm">Loading…</div>
   return user ? children : <Navigate to="/login" replace />
 }
 
 function RedirectIfAuth({ children }) {
-  const { user } = useAuth()
+  const { user, loading } = useAuth()
+  if (loading) return <div className="flex items-center justify-center h-screen text-slate-400 text-sm">Loading…</div>
   return user ? <Navigate to="/dashboard" replace /> : children
 }
 

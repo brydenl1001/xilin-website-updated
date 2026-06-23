@@ -1,22 +1,40 @@
-import { BookOpen, PenLine, CalendarCheck, Megaphone } from 'lucide-react'
-import { mockStats, mockAttendance, publicAnnouncements } from '../../lib/mockData'
+import { useState, useEffect } from 'react'
+import { BookOpen, CalendarCheck, Megaphone } from 'lucide-react'
+import { listMyClasses, listAnnouncements } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
-const ICON_MAP = { BookOpen, PenLine, CalendarCheck, Megaphone }
 const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
-
-const MY_CLASSES = [
-  { name: 'Grade 9-A', subject: 'Mathematics', students: 30, next: 'Mon 8:00 AM' },
-  { name: 'Grade 10-B', subject: 'Mathematics', students: 28, next: 'Mon 9:00 AM' },
-  { name: 'Grade 11-A', subject: 'Mathematics', students: 32, next: 'Tue 8:00 AM' },
-  { name: 'Grade 12-A', subject: 'Calculus', students: 25, next: 'Tue 10:20 AM' },
-]
 
 export default function TeacherDashboard() {
   const { user } = useAuth()
-  const stats = mockStats.teacher
+  const [classes, setClasses] = useState([])
+  const [announcements, setAnnouncements] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [classData, annData] = await Promise.all([
+          listMyClasses(user.id),
+          listAnnouncements(),
+        ])
+        setClasses(classData)
+        setAnnouncements(annData.slice(0, 4))
+      } catch (err) {
+        console.error(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [user.id])
+
+  const stats = [
+    { label: 'My Classes', value: classes.length, delta: 'Assigned this semester', trend: 'up', Icon: BookOpen },
+    { label: 'Announcements', value: announcements.length, delta: 'Visible to you', trend: 'up', Icon: Megaphone },
+  ]
 
   return (
     <div className="max-w-6xl animate-fade-in">
@@ -27,8 +45,8 @@ export default function TeacherDashboard() {
         <p className="text-slate-400 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        {stats.map(s => <StatCard key={s.label} {...s} Icon={ICON_MAP[s.icon]} />)}
+      <div className="grid grid-cols-2 gap-4 mb-6">
+        {stats.map(s => <StatCard key={s.label} {...s} />)}
       </div>
 
       <div className="grid lg:grid-cols-2 gap-5">
@@ -36,32 +54,39 @@ export default function TeacherDashboard() {
         <Card>
           <SectionHeader title="My Classes"
             action={<Link to="/my-classes" className="text-xs text-yellow-600 hover:text-yellow-700">Manage</Link>} />
-          <div className="space-y-2">
-            {MY_CLASSES.map(c => (
-              <div key={c.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
-                <div>
-                  <p className="text-sm font-medium text-slate-900">{c.name}</p>
-                  <p className="text-xs text-slate-400">{c.subject} · {c.students} students</p>
+          {loading ? (
+            <p className="text-slate-400 text-sm py-6">Loading…</p>
+          ) : classes.length === 0 ? (
+            <p className="text-slate-400 text-sm py-6">No classes assigned yet.</p>
+          ) : (
+            <div className="space-y-2">
+              {classes.map(({ classes: c, role }) => (
+                <div key={c.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{c.name}</p>
+                    <p className="text-xs text-slate-400">{c.courses?.name}</p>
+                  </div>
+                  <Badge variant="default">{role}</Badge>
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-slate-400">Next class</p>
-                  <p className="text-xs font-medium text-slate-700">{c.next}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Card>
 
         {/* Recent Announcements */}
         <Card>
           <SectionHeader title="Announcements"
             action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
-          {publicAnnouncements.slice(0, 4).map(ann => (
+          {loading ? (
+            <p className="text-slate-400 text-sm py-6">Loading…</p>
+          ) : announcements.length === 0 ? (
+            <p className="text-slate-400 text-sm py-6">No announcements yet.</p>
+          ) : announcements.map(ann => (
             <div key={ann.id} className="flex gap-3 py-3 border-b border-slate-100 last:border-0">
               <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${CAT_DOT[ann.category]}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-slate-900 truncate">{ann.title}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{ann.published_at}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{ann.published_at?.slice(0, 10)}</p>
               </div>
               <Badge variant={ann.category}>{ann.category}</Badge>
             </div>

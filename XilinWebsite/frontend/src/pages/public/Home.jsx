@@ -1,5 +1,7 @@
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { schoolInfo, publicAnnouncements } from '../../lib/mockData'
+import { schoolInfo } from '../../lib/mockData'
+import { listPublicAnnouncements } from '../../lib/supabaseClient'
 import { Badge, Button } from '../../components/ui'
 import { ArrowRight, MapPin, Phone, Mail, BookOpen, Users, Award, TrendingUp } from 'lucide-react'
 
@@ -7,7 +9,15 @@ const STAT_ICONS = [BookOpen, Users, Award, TrendingUp]
 const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
 
 export default function Home() {
-  const publicNews = publicAnnouncements.filter(a => a.is_public).slice(0, 3)
+  const [publicNews, setPublicNews] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    listPublicAnnouncements()
+      .then(data => setPublicNews(data.slice(0, 3)))
+      .catch(err => console.error('Failed to load announcements:', err))
+      .finally(() => setLoading(false))
+  }, [])
 
   return (
     <div>
@@ -93,17 +103,21 @@ export default function Home() {
             </Link>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            {publicNews.map(ann => (
+            {loading ? (
+              <p className="text-slate-400 text-sm col-span-3 text-center py-8">Loading announcements…</p>
+            ) : publicNews.length === 0 ? (
+              <p className="text-slate-400 text-sm col-span-3 text-center py-8">No announcements yet.</p>
+            ) : publicNews.map(ann => (
               <div key={ann.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-yellow-300 transition-colors">
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${CAT_COLOR[ann.category]}`}>
                     {ann.category}
                   </span>
-                  <span className="text-xs text-slate-400">{ann.published_at}</span>
+                  <span className="text-xs text-slate-400">{ann.published_at?.slice(0, 10)}</span>
                 </div>
                 <h3 className="font-display text-[15px] text-slate-900 leading-snug mb-2">{ann.title}</h3>
                 <p className="text-sm text-slate-500 line-clamp-2">{ann.body}</p>
-                <p className="text-xs text-slate-400 mt-3">{ann.author}</p>
+                <p className="text-xs text-slate-400 mt-3">{ann.profiles?.full_name || 'School Office'}</p>
               </div>
             ))}
           </div>

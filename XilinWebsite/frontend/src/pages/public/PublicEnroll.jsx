@@ -33,11 +33,49 @@ function StepIndicator({ current }) {
 export default function PublicEnroll() {
   const [step, setStep] = useState(0)
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
   const [form, setForm] = useState({
     student_name: '', dob: '', parent_name: '', email: '', phone: '',
     grade: 'Grade 9', prev_school: '', notes: '',
   })
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+
+  /**
+   * Submitting an application creates a new auth.users entry for the
+   * student, a profiles row, and an enrollments row — all of which require
+   * the service role key. This MUST go through a backend endpoint, not a
+   * direct Supabase client call.
+   *
+   * Expected backend contract (e.g. POST /api/enrollments/apply):
+   *   1. supabase.auth.admin.createUser({ email: form.email, password: <generated> })
+   *   2. insert into profiles (id, full_name, role='student', can_login=true)
+   *   3. insert into enrollments (student_id, status='pending', notes)
+   *   4. (optionally) email the parent/guardian their temporary credentials
+   *
+   * Until that endpoint exists, this call will fail — replace the URL below
+   * once your backend is deployed.
+   */
+  const handleSubmit = async () => {
+    setSubmitting(true)
+    setSubmitError('')
+    try {
+      const res = await fetch('/api/enrollments/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body.error || `Server responded with ${res.status}`)
+      }
+      setSubmitted(true)
+    } catch (err) {
+      setSubmitError(err.message)
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   if (submitted) {
     return (
@@ -121,8 +159,14 @@ export default function PublicEnroll() {
           </div>
         )}
 
+        {submitError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-2.5 mt-4 text-xs text-red-600">
+            Failed to submit: {submitError}
+          </div>
+        )}
+
         <div className="flex justify-between mt-8 pt-6 border-t border-slate-100">
-          <Button variant="outline" onClick={() => setStep(s => s - 1)} disabled={step === 0}>
+          <Button variant="outline" onClick={() => setStep(s => s - 1)} disabled={step === 0 || submitting}>
             Back
           </Button>
           {step < STEPS.length - 1 ? (
@@ -130,8 +174,8 @@ export default function PublicEnroll() {
               Continue <ArrowRight size={14} />
             </Button>
           ) : (
-            <Button variant="gold" onClick={() => setSubmitted(true)}>
-              Submit Application
+            <Button variant="gold" onClick={handleSubmit} disabled={submitting}>
+              {submitting ? 'Submitting…' : 'Submit Application'}
             </Button>
           )}
         </div>
