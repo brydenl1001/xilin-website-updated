@@ -25,14 +25,14 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Left panel */}
-      <div className="hidden lg:flex w-5/12 bg-slate-900 flex-col justify-between p-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-yellow-400/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
+      <div className="hidden lg:flex w-5/12 bg-slate-800 flex-col justify-between p-12 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-teal-400/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/3 translate-y-1/3 -translate-x-1/3 pointer-events-none" />
         <div className="relative">
           <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-8 transition-colors">
             <ArrowLeft size={14} /> Back to site
           </Link>
-          <p className="font-display text-2xl text-white">Aca<span className="text-yellow-400">demia</span></p>
+          <p className="font-display text-2xl text-white">Aca<span className="text-teal-400">demia</span></p>
           <p className="text-slate-400 text-xs uppercase tracking-widest mt-1">School Portal</p>
         </div>
         <div className="relative">
@@ -41,12 +41,10 @@ export default function Login() {
           </p>
           <p className="text-slate-500 text-sm">Nelson Mandela</p>
         </div>
-        <div className="relative grid grid-cols-2 gap-2">
-          {['1,248 Students', '96 Staff', 'RBAC Secured', '4 Portals'].map(s => (
-            <div key={s} className="bg-white/5 rounded-xl px-4 py-3 border border-white/8">
-              <p className="text-white text-sm">{s}</p>
-            </div>
-          ))}
+        <div className="relative">
+          <p className="text-slate-400 text-sm leading-relaxed">
+            Sign in to view your classes, attendance, and payments — all in one place.
+          </p>
         </div>
       </div>
 
@@ -57,7 +55,7 @@ export default function Login() {
             <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 text-sm mb-4 transition-colors">
               <ArrowLeft size={14} /> Back to site
             </Link>
-            <p className="font-display text-2xl text-slate-900">Aca<span className="text-yellow-500">demia</span></p>
+            <p className="font-display text-2xl text-slate-900">Aca<span className="text-teal-600">demia</span></p>
           </div>
 
           <h2 className="font-display text-3xl text-slate-900 mb-1">Welcome back</h2>

@@ -24,15 +24,93 @@ import { supabase } from './supabase'
 // PUBLIC STATS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Public: get counts of students and teachers for the homepage stats section. */
+/**
+ * Public: counts for the homepage stats section. Uses a SECURITY DEFINER RPC
+ * so anonymous visitors get aggregate counts without the profiles table being
+ * readable by the anon role.
+ */
 export async function getPublicStats() {
-  const [students, teachers] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'student'),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('role', 'teacher'),
-  ])
-  if (students.error) throw students.error
-  if (teachers.error) throw teachers.error
-  return { studentCount: students.count ?? 0, teacherCount: teachers.count ?? 0 }
+  const { data, error } = await supabase.rpc('get_public_stats')
+  if (error) throw error
+  return {
+    studentCount: data?.studentCount ?? 0,
+    teacherCount: data?.teacherCount ?? 0,
+    courseCount:  data?.courseCount ?? 0,
+  }
+}
+
+/**
+ * Public: submit an enrollment application from the /enroll page. Routed through
+ * the `enroll-apply` edge function (service role) which validates the input,
+ * checks the Family ID when joining an existing family, and inserts a pending
+ * application for an admin to review. Nothing is activated until approval.
+ */
+export async function submitEnrollmentApplication(form) {
+  const { data, error } = await supabase.functions.invoke('enroll-apply', { body: form })
+  if (error) {
+    // Surface the function's JSON error message when present.
+    let message = error.message
+    try {
+      const body = await error.context?.json?.()
+      if (body?.error) message = body.error
+    } catch { /* keep default message */ }
+    throw new Error(message)
+  }
+  return data
+}
+
+/** Admin: list enrollment applications submitted via /enroll, optionally by status. */
+export async function listEnrollmentApplications(status = null) {
+  let query = supabase
+    .from('enrollment_applications')
+    .select('*, families(family_name)')
+    .order('created_at', { ascending: false })
+  if (status) query = query.eq('status', status)
+  const { data, error } = await query
+  if (error) throw error
+  return data
+}
+
+/**
+ * Admin: approve or reject an application. Routed through the `review-application`
+ * edge function which (on approval) creates the family login if new, a member
+ * profile, the family link, and enrollments into active classes — all server-side
+ * with the service role. action: 'approve' | 'reject'.
+ */
+export async function reviewEnrollmentApplication(applicationId, action) {
+  const { data, error } = await supabase.functions.invoke('review-application', {
+    body: { application_id: applicationId, action },
+  })
+  if (error) {
+    let message = error.message
+    try {
+      const body = await error.context?.json?.()
+      if (body?.error) message = body.error
+    } catch { /* keep default message */ }
+    throw new Error(message)
+  }
+  return data
+}
+
+/**
+ * Admin: create an account via the `create-account` edge function (service role).
+ * payload.kind:
+ *   'staff'  → { full_name, email, role: 'admin'|'teacher', password? }
+ *   'family' → { family_name, email, phone?, password? }
+ *   'member' → { full_name, role: 'parent'|'student', family_id, phone? }
+ * Returns { id, temp_password?, emailed? }.
+ */
+export async function createAccount(payload) {
+  const { data, error } = await supabase.functions.invoke('create-account', { body: payload })
+  if (error) {
+    let message = error.message
+    try {
+      const body = await error.context?.json?.()
+      if (body?.error) message = body.error
+    } catch { /* keep default message */ }
+    throw new Error(message)
+  }
+  return data
 }
 
 
@@ -203,6 +281,42 @@ export async function removeFamilyMember(familyId, profileId) {
   if (error) throw error
 }
 
+/**
+ * Admin: update a family member's name and/or role. Keeps the member profile
+ * and the family_members relationship in sync. role: 'parent' | 'student'.
+ */
+export async function updateFamilyMember(familyId, profileId, { full_name, role }) {
+  const updates = {}
+  if (full_name !== undefined) updates.full_name = full_name
+  if (role !== undefined) updates.role = role
+  if (Object.keys(updates).length) {
+    const { error } = await supabase.from('profiles').update(updates).eq('id', profileId)
+    if (error) throw error
+  }
+  if (role !== undefined) {
+    const { error } = await supabase
+      .from('family_members')
+      .update({ relationship: role })
+      .eq('family_id', familyId)
+      .eq('profile_id', profileId)
+    if (error) throw error
+  }
+}
+
+/**
+ * Admin: fully remove a member — deletes their enrollments, the family link,
+ * and the member profile. (Members have no login, so there's no auth user.)
+ */
+export async function removeFamilyMemberFully(familyId, profileId) {
+  const { error: e1 } = await supabase.from('enrollments').delete().eq('student_id', profileId)
+  if (e1) throw e1
+  const { error: e2 } = await supabase
+    .from('family_members').delete().eq('family_id', familyId).eq('profile_id', profileId)
+  if (e2) throw e2
+  const { error: e3 } = await supabase.from('profiles').delete().eq('id', profileId)
+  if (e3) throw e3
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEMESTERS
@@ -262,22 +376,24 @@ export async function listCourses() {
   const { data, error } = await supabase
     .from('courses')
     .select('*')
-    .order('grade_level', { ascending: true })
+    .order('subject_area', { ascending: true })
+    .order('name', { ascending: true })
   if (error) throw error
   return data
 }
 
-/** Public: list courses for the unauthenticated /classes page. */
+/** Public: list courses for the unauthenticated /classes page. Ordered as a flat catalog. */
 export async function listPublicCourses() {
   const { data, error } = await supabase
     .from('courses')
     .select('*')
-    .order('grade_level', { ascending: true })
+    .order('subject_area', { ascending: true })
+    .order('name', { ascending: true })
   if (error) throw error
   return data
 }
 
-/** Admin: create a new course template (code, name, grade_level required). */
+/** Admin: create a new course template (code, name required; grade_level text + price optional). */
 export async function createCourse(course) {
   const { data, error } = await supabase
     .from('courses')
@@ -456,6 +572,23 @@ export async function assignEnrollmentToClass(enrollmentId, classId) {
   return data
 }
 
+/** Admin: directly enroll a family member (student/parent) into a class. */
+export async function createEnrollment(studentId, classId, status = 'enrolled') {
+  const { data, error } = await supabase
+    .from('enrollments')
+    .insert({ student_id: studentId, class_id: classId, status })
+    .select('*, classes(*, courses(*), semesters(*))')
+    .single()
+  if (error) throw error
+  return data
+}
+
+/** Admin: remove an enrollment entirely. */
+export async function deleteEnrollment(enrollmentId) {
+  const { error } = await supabase.from('enrollments').delete().eq('id', enrollmentId)
+  if (error) throw error
+}
+
 /**
  * Teacher/admin: get the roster of students enrolled in a specific class.
  *
@@ -499,7 +632,7 @@ export async function listFeeStructures(semesterId = null) {
   return data
 }
 
-/** Admin: create a fee structure (name, amount, due_date required; grade_level/semester_id optional). */
+/** Admin: create a fee structure (name, amount, due_date required; semester_id optional). */
 export async function createFeeStructure(feeStructure) {
   const { data, error } = await supabase
     .from('fee_structures')
@@ -588,11 +721,15 @@ export async function createPayment(payment) {
 // ANNOUNCEMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Public: list public announcements only (is_public = true). No auth required. */
+/**
+ * Public: list public announcements only (is_public = true). No auth required.
+ * Does NOT embed profiles — anon has no access to that table, and the public
+ * pages fall back to "School Office" for the author label.
+ */
 export async function listPublicAnnouncements() {
   const { data, error } = await supabase
     .from('announcements')
-    .select('*, profiles(full_name)')
+    .select('*')
     .eq('is_public', true)
     .order('published_at', { ascending: false })
   if (error) throw error
@@ -642,66 +779,6 @@ export async function deleteAnnouncement(announcementId) {
     .delete()
     .eq('id', announcementId)
   if (error) throw error
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GRADES
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Student/family: get own grades, optionally filtered by term. Includes the recording teacher's name. */
-export async function getOwnGrades(studentId, term = null) {
-  let query = supabase
-    .from('grades')
-    .select('*, classes(*, courses(*)), recorder:recorded_by(full_name)')
-    .eq('student_id', studentId)
-
-  if (term) query = query.eq('term', term)
-
-  const { data, error } = await query.order('created_at', { ascending: false })
-  if (error) throw error
-  return data
-}
-
-/** Teacher: get all grades for a specific class, optionally filtered by term. */
-export async function getClassGrades(classId, term = null) {
-  let query = supabase
-    .from('grades')
-    .select('*, profiles(full_name)')
-    .eq('class_id', classId)
-
-  if (term) query = query.eq('term', term)
-
-  const { data, error } = await query
-  if (error) throw error
-  return data
-}
-
-/**
- * Teacher: enter or update a single grade.
- * NOTE: requires a unique constraint on (student_id, class_id, subject, term)
- * in the grades table for upsert conflict resolution to work. Add it via:
- *   alter table grades add constraint grades_unique_entry
- *     unique (student_id, class_id, subject, term);
- */
-export async function upsertGrade(grade) {
-  const { data, error } = await supabase
-    .from('grades')
-    .upsert(grade, { onConflict: 'student_id,class_id,subject,term' })
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-/** Teacher: bulk save grades for a whole class at once. Same unique constraint required. */
-export async function bulkUpsertGrades(gradesArray) {
-  const { data, error } = await supabase
-    .from('grades')
-    .upsert(gradesArray, { onConflict: 'student_id,class_id,subject,term' })
-    .select()
-  if (error) throw error
-  return data
 }
 
 
@@ -795,8 +872,14 @@ export async function getAttendanceSummary(classId, startDate, endDate) {
 //       → auth.admin.createUser() + profiles insert (can_login=true)
 //
 //   submitEnrollmentApplication(formData)
-//       → the public /enroll page action: creates a new student
-//         auth.users entry + profiles row + enrollments row, all atomic
+//       → the public /enroll page action. formData shape:
+//           { applicant_type: 'parent'|'student', full_name, email, phone,
+//             dob?, family_mode: 'new'|'existing', family_id?, family_name?,
+//             class_ids: [], notes? }
+//         Creates a pending applicant profile (can_login=false) + a queued
+//         family link (existing) or new family record (new) + one pending
+//         enrollment row per class_id. Nothing is activated until an admin
+//         approves it.
 //
 //   approveEnrollmentFully(enrollmentId, classId, familyId)
 //       → updates enrollment status + assigns class + links family_members

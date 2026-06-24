@@ -1,4 +1,31 @@
-import { X } from 'lucide-react'
+import { X, Search, ArrowUp, ArrowDown } from 'lucide-react'
+
+// ─── ListToolbar (search + sort) ───────────────────────────────────────────────
+export function ListToolbar({ query, onQuery, placeholder = 'Search...', sortOptions = [], sortKey, onSortKey, sortDir, onToggleDir, right }) {
+  return (
+    <div className="flex items-center gap-2 mb-4 flex-wrap">
+      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 h-9 flex-1 min-w-[200px] max-w-sm">
+        <Search size={14} className="text-slate-400 flex-shrink-0" />
+        <input value={query} onChange={e => onQuery(e.target.value)} placeholder={placeholder}
+          className="text-sm outline-none flex-1 placeholder:text-slate-400 bg-transparent text-slate-800" />
+      </div>
+      {sortOptions.length > 0 && (
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-400 hidden sm:inline">Sort</span>
+          <select value={sortKey} onChange={e => onSortKey(e.target.value)}
+            className="text-xs border border-slate-200 rounded-lg px-2 h-9 bg-white outline-none text-slate-700 cursor-pointer">
+            {sortOptions.map(o => <option key={o.key} value={o.key}>{o.label}</option>)}
+          </select>
+          <button onClick={onToggleDir} title={sortDir === 'asc' ? 'Ascending' : 'Descending'}
+            className="h-9 w-9 flex items-center justify-center border border-slate-200 rounded-lg bg-white text-slate-500 hover:text-slate-800 transition-colors cursor-pointer">
+            {sortDir === 'asc' ? <ArrowUp size={14} /> : <ArrowDown size={14} />}
+          </button>
+        </div>
+      )}
+      {right}
+    </div>
+  )
+}
 
 // ─── Badge ────────────────────────────────────────────────────────────────────
 export function Badge({ children, variant = 'default' }) {
@@ -7,14 +34,14 @@ export function Badge({ children, variant = 'default' }) {
     success:   'bg-green-100 text-green-700',
     warning:   'bg-amber-100 text-amber-700',
     danger:    'bg-red-100 text-red-700',
-    gold:      'bg-yellow-100 text-yellow-800',
-    navy:      'bg-blue-100 text-blue-800',
+    gold:      'bg-teal-100 text-teal-800',
+    navy:      'bg-cyan-100 text-cyan-800',
     urgent:    'bg-red-100 text-red-700',
     events:    'bg-amber-100 text-amber-700',
-    academics: 'bg-blue-100 text-blue-700',
+    academics: 'bg-cyan-100 text-cyan-700',
     general:   'bg-slate-100 text-slate-600',
     pending:   'bg-amber-100 text-amber-700',
-    admitted:  'bg-blue-100 text-blue-700',
+    admitted:  'bg-cyan-100 text-cyan-700',
     enrolled:  'bg-green-100 text-green-700',
     rejected:  'bg-red-100 text-red-700',
     paid:      'bg-green-100 text-green-700',
@@ -30,15 +57,15 @@ export function Badge({ children, variant = 'default' }) {
 
 // ─── Button ───────────────────────────────────────────────────────────────────
 export function Button({ children, variant = 'primary', size = 'md', onClick, type = 'button', disabled, className = '' }) {
-  const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed'
+  const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-teal-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-6 py-3 text-base' }
   const variants = {
-    primary:   'bg-yellow-400 text-slate-900 hover:bg-yellow-300 active:scale-95',
-    secondary: 'bg-slate-900 text-white hover:bg-slate-800 active:scale-95',
+    primary:   'bg-teal-600 text-white hover:bg-teal-700 active:scale-95',
+    secondary: 'bg-slate-800 text-white hover:bg-slate-700 active:scale-95',
     outline:   'border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95',
     ghost:     'text-slate-500 hover:text-slate-900 hover:bg-slate-100',
     danger:    'bg-red-500 text-white hover:bg-red-600 active:scale-95',
-    gold:      'bg-yellow-400 text-slate-900 hover:bg-yellow-300 active:scale-95',
+    gold:      'bg-teal-600 text-white hover:bg-teal-700 active:scale-95',
   }
   return (
     <button
@@ -57,7 +84,7 @@ export function Card({ children, className = '', onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`bg-white border border-slate-200 rounded-xl p-5 ${onClick ? 'cursor-pointer hover:border-yellow-300 transition-colors' : ''} ${className}`}
+      className={`bg-white border border-slate-200 rounded-xl p-5 ${onClick ? 'cursor-pointer hover:border-teal-300 transition-colors' : ''} ${className}`}
     >
       {children}
     </div>
@@ -66,8 +93,8 @@ export function Card({ children, className = '', onClick }) {
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 export function StatCard({ label, value, delta, trend, Icon }) {
-  const iconBg    = trend === 'warn' ? 'bg-yellow-100' : 'bg-slate-100'
-  const iconColor = trend === 'warn' ? 'text-yellow-700' : 'text-slate-700'
+  const iconBg    = trend === 'warn' ? 'bg-amber-100' : 'bg-teal-50'
+  const iconColor = trend === 'warn' ? 'text-amber-700' : 'text-teal-700'
   const deltaColor = trend === 'warn' ? 'text-amber-600' : 'text-green-600'
   return (
     <Card className="animate-fade-in">
@@ -97,7 +124,7 @@ export function Input({ label, id, type = 'text', placeholder, value, onChange, 
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition-all placeholder:text-slate-300"
+        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all placeholder:text-slate-300"
       />
     </div>
   )
@@ -116,7 +143,7 @@ export function Select({ label, id, value, onChange, children, className = '' })
         id={id}
         value={value}
         onChange={onChange}
-        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition-all"
+        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
       >
         {children}
       </select>
@@ -139,7 +166,7 @@ export function Textarea({ label, id, placeholder, value, onChange, rows = 4, cl
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition-all resize-none placeholder:text-slate-300"
+        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all resize-none placeholder:text-slate-300"
       />
     </div>
   )
@@ -157,7 +184,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' })
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-display text-lg text-slate-900">{title}</h3>
-          <button onClick={onClose} className="text-slate-300 hover:text-slate-600 transition-colors">
+          <button onClick={onClose} className="text-slate-300 hover:text-slate-600 transition-colors cursor-pointer">
             <X size={18} />
           </button>
         </div>
@@ -194,7 +221,7 @@ export function PageHeader({ title, subtitle, action }) {
 export function EmptyState({ message = 'No data found', icon }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center mb-3 text-slate-400 text-xl">
+      <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center mb-3 text-teal-400 text-xl">
         {icon || '∅'}
       </div>
       <p className="text-sm text-slate-400">{message}</p>

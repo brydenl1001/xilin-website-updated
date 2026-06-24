@@ -4,7 +4,7 @@ import { schoolInfo } from '../../lib/mockData'
 import { listPublicAnnouncements, getPublicStats } from '../../lib/supabaseClient'
 import { Badge, Button } from '../../components/ui'
 import { ArrowRight, MapPin, Phone, Mail, BookOpen, Users, Award } from 'lucide-react'
-const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
+const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-cyan-100 text-cyan-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
 
 export default function Home() {
   const [publicNews, setPublicNews] = useState([])
@@ -24,13 +24,13 @@ export default function Home() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-slate-900 text-white py-24 px-6 relative overflow-hidden">
+      <section className="bg-slate-800 text-white py-24 px-6 relative overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-yellow-400/5 -translate-y-1/2 translate-x-1/4" />
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-teal-400/5 -translate-y-1/2 translate-x-1/4" />
           <div className="absolute bottom-0 left-0 w-64 h-64 rounded-full bg-white/3 translate-y-1/2 -translate-x-1/4" />
         </div>
         <div className="max-w-6xl mx-auto relative">
-          <p className="text-yellow-400 text-xs uppercase tracking-widest font-medium mb-4">Est. {schoolInfo.founded}</p>
+          <p className="text-teal-400 text-xs uppercase tracking-widest font-medium mb-4">Est. {schoolInfo.founded}</p>
           <h1 className="font-display text-5xl md:text-6xl leading-tight max-w-2xl mb-6">
             {schoolInfo.tagline}
           </h1>
@@ -57,8 +57,8 @@ export default function Home() {
             { label: 'Years of Excellence', value: `${new Date().getFullYear() - schoolInfo.founded}+`, Icon: Award },
           ].map(s => (
             <div key={s.label} className="text-center">
-              <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center mx-auto mb-3">
-                <s.Icon size={18} className="text-yellow-600" />
+              <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center mx-auto mb-3">
+                <s.Icon size={18} className="text-teal-600" />
               </div>
               <p className="font-display text-3xl text-slate-900">{s.value}</p>
               <p className="text-sm text-slate-400 mt-1">{s.label}</p>
@@ -70,7 +70,7 @@ export default function Home() {
       {/* About + Principal */}
       <section className="max-w-6xl mx-auto px-6 py-16 grid md:grid-cols-2 gap-12 items-center">
         <div>
-          <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-3">About Academia</p>
+          <p className="text-teal-600 text-xs uppercase tracking-widest font-medium mb-3">About Academia</p>
           <h2 className="font-display text-3xl text-slate-900 mb-5 leading-snug">A tradition of excellence for over three decades</h2>
           <p className="text-slate-500 leading-relaxed mb-4">
             Founded in {schoolInfo.founded}, Academia has grown into one of Chicago's most respected educational institutions. Our curriculum blends rigorous academics with arts, technology, and character-building programmes.
@@ -82,9 +82,9 @@ export default function Home() {
             <Button variant="secondary" size="sm">Explore Our Classes <ArrowRight size={14} /></Button>
           </Link>
         </div>
-        <div className="bg-slate-900 rounded-2xl p-8 text-white relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-yellow-400/5" />
-          <p className="text-yellow-400 text-xs uppercase tracking-widest mb-4">From the Principal</p>
+        <div className="bg-slate-800 rounded-2xl p-8 text-white relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 rounded-full bg-teal-400/5" />
+          <p className="text-teal-400 text-xs uppercase tracking-widest mb-4">From the Principal</p>
           <p className="font-display text-lg leading-relaxed text-white/90 mb-6 italic">
             "At Academia, we believe every student carries unique potential. Our mission is to create the environment in which that potential flourishes — academically, personally, and socially."
           </p>
@@ -98,7 +98,7 @@ export default function Home() {
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>
-              <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-1">Latest</p>
+              <p className="text-teal-600 text-xs uppercase tracking-widest font-medium mb-1">Latest</p>
               <h2 className="font-display text-2xl text-slate-900">News & Announcements</h2>
             </div>
             <Link to="/news" className="text-sm text-slate-500 hover:text-slate-900 flex items-center gap-1 transition-colors">
@@ -111,7 +111,7 @@ export default function Home() {
             ) : publicNews.length === 0 ? (
               <p className="text-slate-400 text-sm col-span-3 text-center py-8">No announcements yet.</p>
             ) : publicNews.map(ann => (
-              <div key={ann.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-yellow-300 transition-colors">
+              <div key={ann.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-teal-300 transition-colors cursor-pointer">
                 <div className="flex items-center justify-between mb-3">
                   <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${CAT_COLOR[ann.category]}`}>
                     {ann.category}
@@ -142,11 +142,11 @@ export default function Home() {
       </section>
 
       {/* Contact bar */}
-      <section className="bg-slate-900 text-white py-10 px-6">
+      <section className="bg-slate-800 text-white py-10 px-6">
         <div className="max-w-6xl mx-auto flex flex-wrap gap-8 justify-center md:justify-start text-sm text-slate-400">
-          <span className="flex items-center gap-2"><MapPin size={14} className="text-yellow-400" />{schoolInfo.address}</span>
-          <span className="flex items-center gap-2"><Phone size={14} className="text-yellow-400" />{schoolInfo.phone}</span>
-          <span className="flex items-center gap-2"><Mail size={14} className="text-yellow-400" />{schoolInfo.email}</span>
+          <span className="flex items-center gap-2"><MapPin size={14} className="text-teal-400" />{schoolInfo.address}</span>
+          <span className="flex items-center gap-2"><Phone size={14} className="text-teal-400" />{schoolInfo.phone}</span>
+          <span className="flex items-center gap-2"><Mail size={14} className="text-teal-400" />{schoolInfo.email}</span>
         </div>
       </section>
     </div>

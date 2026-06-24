@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Megaphone, BookOpen, CalendarCheck, Clock,
-  UserPlus, CreditCard, Users, Settings, LogOut, GraduationCap,
-  BarChart2, ChevronLeft, ChevronRight, Globe, PenLine
+  Home, CreditCard, Users, Settings, LogOut, GraduationCap,
+  ChevronLeft, ChevronRight, Globe, Inbox
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -12,15 +12,19 @@ const NAV_CONFIG = {
       { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard },
       { label: 'Announcements', to: '/announcements', icon: Megaphone },
     ]},
+    { section: 'Catalog', items: [
+      { label: 'Courses',      to: '/courses',        icon: BookOpen },
+      { label: 'Classes',      to: '/manage-classes', icon: GraduationCap },
+    ]},
     { section: 'Academic', items: [
-      { label: 'Grades',       to: '/grades',     icon: BarChart2 },
       { label: 'Attendance',   to: '/attendance', icon: CalendarCheck },
       { label: 'Timetable',    to: '/timetable',  icon: Clock },
     ]},
     { section: 'Management', items: [
-      { label: 'Enrollments',  to: '/enrollments', icon: UserPlus },
-      { label: 'Payments',     to: '/payments',    icon: CreditCard },
-      { label: 'Users',        to: '/users',       icon: Users },
+      { label: 'Applications', to: '/applications', icon: Inbox },
+      { label: 'Families',     to: '/families',     icon: Home },
+      { label: 'Users',        to: '/users',        icon: Users },
+      { label: 'Payments',     to: '/payments',     icon: CreditCard },
     ]},
     { section: 'System', items: [
       { label: 'Settings',     to: '/settings',    icon: Settings },
@@ -33,7 +37,6 @@ const NAV_CONFIG = {
     ]},
     { section: 'Academic', items: [
       { label: 'My Classes',   to: '/my-classes',  icon: BookOpen },
-      { label: 'Grade Entry',  to: '/grade-entry', icon: PenLine },
       { label: 'Attendance',   to: '/attendance',  icon: CalendarCheck },
       { label: 'Timetable',    to: '/timetable',   icon: Clock },
     ]},
@@ -47,7 +50,6 @@ const NAV_CONFIG = {
       { label: 'Announcements', to: '/announcements', icon: Megaphone },
     ]},
     { section: 'Academic', items: [
-      { label: 'My Grades',    to: '/my-grades',   icon: BarChart2 },
       { label: 'Attendance',   to: '/attendance',  icon: CalendarCheck },
       { label: 'Timetable',    to: '/timetable',   icon: Clock },
     ]},
@@ -64,7 +66,6 @@ const NAV_CONFIG = {
       { label: 'Announcements', to: '/announcements', icon: Megaphone },
     ]},
     { section: "Child's Progress", items: [
-      { label: 'Grades',       to: '/child-grades',      icon: BarChart2 },
       { label: 'Attendance',   to: '/child-attendance',  icon: CalendarCheck },
       { label: 'Timetable',    to: '/child-timetable',   icon: Clock },
     ]},
@@ -78,8 +79,8 @@ const NAV_CONFIG = {
 }
 
 const ROLE_BADGE = {
-  admin:   'bg-yellow-400/20 text-yellow-300',
-  teacher: 'bg-blue-400/20 text-blue-300',
+  admin:   'bg-teal-400/20 text-teal-300',
+  teacher: 'bg-cyan-400/20 text-cyan-300',
   student: 'bg-green-400/20 text-green-300',
   parent:  'bg-purple-400/20 text-purple-300',
 }
@@ -87,7 +88,7 @@ const ROLE_BADGE = {
 function Initials({ name }) {
   const parts = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   return (
-    <div className="w-8 h-8 rounded-full bg-yellow-400/15 border border-yellow-400/30 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-yellow-400">
+    <div className="w-8 h-8 rounded-full bg-teal-400/15 border border-teal-400/30 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-teal-400">
       {parts}
     </div>
   )
@@ -99,20 +100,20 @@ export default function Sidebar({ collapsed, onToggle }) {
   const sections = NAV_CONFIG[user.role] || NAV_CONFIG.admin
 
   return (
-    <aside className={`h-screen flex flex-col bg-slate-900 transition-[width] duration-300 ease-in-out flex-shrink-0 ${collapsed ? 'w-[60px]' : 'w-56'}`}>
+    <aside className={`h-screen flex flex-col bg-slate-800 transition-[width] duration-300 ease-in-out flex-shrink-0 ${collapsed ? 'w-[60px]' : 'w-56'}`}>
       {/* Brand */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-white/8 min-h-[68px]">
         {!collapsed && (
           <div className="overflow-hidden">
             <p className="font-display text-[17px] text-white whitespace-nowrap">
-              Aca<span className="text-yellow-400">demia</span>
+              Aca<span className="text-teal-400">demia</span>
             </p>
             <p className="text-[9px] text-white/30 uppercase tracking-widest mt-0.5">School Portal</p>
           </div>
         )}
-        {collapsed && <GraduationCap size={20} className="text-yellow-400 mx-auto" />}
+        {collapsed && <GraduationCap size={20} className="text-teal-400 mx-auto" />}
         {!collapsed && (
-          <button onClick={onToggle} className="text-white/25 hover:text-white/60 transition-colors ml-2 flex-shrink-0">
+          <button onClick={onToggle} className="text-white/25 hover:text-white/60 transition-colors ml-2 flex-shrink-0 cursor-pointer">
             <ChevronLeft size={14} />
           </button>
         )}
@@ -120,7 +121,7 @@ export default function Sidebar({ collapsed, onToggle }) {
 
       {/* Toggle when collapsed */}
       {collapsed && (
-        <button onClick={onToggle} className="flex justify-center py-3 text-white/25 hover:text-white/60 transition-colors border-b border-white/8">
+        <button onClick={onToggle} className="flex justify-center py-3 text-white/25 hover:text-white/60 transition-colors border-b border-white/8 cursor-pointer">
           <ChevronRight size={14} />
         </button>
       )}
@@ -144,7 +145,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                     collapsed ? 'px-0 justify-center' : 'px-4'
                   } ${
                     isActive
-                      ? 'text-yellow-400 bg-yellow-400/8 border-yellow-400 font-medium'
+                      ? 'text-teal-400 bg-teal-400/8 border-teal-400 font-medium'
                       : 'text-white/50 border-transparent hover:text-white/80 hover:bg-white/4'
                   }`
                 }
@@ -178,12 +179,12 @@ export default function Sidebar({ collapsed, onToggle }) {
                 {user.role}
               </span>
             </div>
-            <button onClick={signOut} title="Sign out" className="text-white/25 hover:text-white/60 transition-colors flex-shrink-0">
+            <button onClick={signOut} title="Sign out" className="text-white/25 hover:text-white/60 transition-colors flex-shrink-0 cursor-pointer">
               <LogOut size={14} />
             </button>
           </div>
         ) : (
-          <button onClick={signOut} title="Sign out" className="flex justify-center w-full text-white/25 hover:text-white/60 py-1 transition-colors">
+          <button onClick={signOut} title="Sign out" className="flex justify-center w-full text-white/25 hover:text-white/60 py-1 transition-colors cursor-pointer">
             <LogOut size={15} />
           </button>
         )}

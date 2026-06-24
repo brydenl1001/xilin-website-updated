@@ -5,22 +5,28 @@ export default {
     extend: {
       colors: {
         navy: {
-          DEFAULT: '#0F172A',
-          light: '#1E3A8A',
+          DEFAULT: '#164E63',
+          light: '#0E7490',
           soft: '#1e293b',
           muted: '#334155',
         },
-        gold: {
-          DEFAULT: '#D4AF37',
-          light: '#E2B53E',
-          muted: '#f5e49c',
-          dark: '#92740b',
+        teal: {
+          DEFAULT: '#0891B2',
+          light: '#22D3EE',
+          dark: '#155E75',
+          50: '#ECFEFF',
+          100: '#CFFAFE',
+          200: '#A5F3FC',
+          600: '#0891B2',
+          700: '#0E7490',
+          800: '#155E75',
+          900: '#164E63',
         },
         slate: { page: '#F8FAFC' },
       },
       fontFamily: {
-        display: ['"Playfair Display"', 'serif'],
-        body: ['"DM Sans"', 'sans-serif'],
+        display: ['"EB Garamond"', 'serif'],
+        body: ['"Crimson Text"', '"DM Sans"', 'sans-serif'],
       },
     },
   },

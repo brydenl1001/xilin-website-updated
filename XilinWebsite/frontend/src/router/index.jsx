@@ -17,9 +17,11 @@ import Timetable     from '../pages/shared/Timetable'
 
 // Admin pages
 import AdminDashboard   from '../pages/admin/Dashboard'
-import AdminEnrollments from '../pages/admin/Enrollments'
+import AdminApplications from '../pages/admin/Applications'
+import AdminCourses     from '../pages/admin/Courses'
+import AdminClasses     from '../pages/admin/Classes'
+import AdminFamilies    from '../pages/admin/Families'
 import AdminPayments    from '../pages/admin/Payments'
-import AdminGrades      from '../pages/admin/Grades'
 import AdminAttendance  from '../pages/admin/Attendance'
 import AdminTimetable   from '../pages/admin/Timetable'
 import AdminUsers       from '../pages/admin/Users'
@@ -27,18 +29,15 @@ import AdminUsers       from '../pages/admin/Users'
 // Teacher pages
 import TeacherDashboard  from '../pages/teacher/Dashboard'
 import TeacherMyClasses  from '../pages/teacher/MyClasses'
-import TeacherGradeEntry from '../pages/teacher/GradeEntry'
 import TeacherAttendance from '../pages/teacher/Attendance'
 
 // Student pages
 import StudentDashboard  from '../pages/student/Dashboard'
-import StudentMyGrades   from '../pages/student/MyGrades'
 import StudentMyPayments from '../pages/student/MyPayments'
 import StudentAttendance from '../pages/student/Attendance'
 
 // Parent pages
 import ParentDashboard       from '../pages/parent/Dashboard'
-import ParentChildGrades     from '../pages/parent/ChildGrades'
 import ParentChildAttendance from '../pages/parent/ChildAttendance'
 import ParentPayments        from '../pages/parent/Payments'
 
@@ -79,10 +78,12 @@ function PortalRoutes() {
 
         {/* Admin */}
         {role === 'admin' && <>
-          <Route path="/grades"      element={<AdminGrades />} />
           <Route path="/attendance"  element={<AdminAttendance />} />
           <Route path="/timetable"   element={<AdminTimetable />} />
-          <Route path="/enrollments" element={<AdminEnrollments />} />
+          <Route path="/applications" element={<AdminApplications />} />
+          <Route path="/courses"        element={<AdminCourses />} />
+          <Route path="/manage-classes" element={<AdminClasses />} />
+          <Route path="/families"     element={<AdminFamilies />} />
           <Route path="/payments"    element={<AdminPayments />} />
           <Route path="/users"       element={<AdminUsers />} />
         </>}
@@ -90,24 +91,21 @@ function PortalRoutes() {
         {/* Teacher */}
         {role === 'teacher' && <>
           <Route path="/my-classes"  element={<TeacherMyClasses />} />
-          <Route path="/grade-entry" element={<TeacherGradeEntry />} />
           <Route path="/attendance"  element={<TeacherAttendance />} />
           <Route path="/timetable"   element={<Timetable subtitle="Your teaching schedule" />} />
         </>}
 
         {/* Student */}
         {role === 'student' && <>
-          <Route path="/my-grades"   element={<StudentMyGrades />} />
           <Route path="/attendance"  element={<StudentAttendance />} />
-          <Route path="/timetable"   element={<Timetable subtitle="Grade 10-A — Weekly schedule" />} />
+          <Route path="/timetable"   element={<Timetable subtitle="Your weekly class schedule" />} />
           <Route path="/my-payments" element={<StudentMyPayments />} />
         </>}
 
         {/* Parent */}
         {role === 'parent' && <>
-          <Route path="/child-grades"      element={<ParentChildGrades />} />
           <Route path="/child-attendance"  element={<ParentChildAttendance />} />
-          <Route path="/child-timetable"   element={<Timetable subtitle="James Doe — Grade 10-A schedule" />} />
+          <Route path="/child-timetable"   element={<Timetable subtitle="Weekly class schedule" />} />
           <Route path="/payments"          element={<ParentPayments />} />
         </>}
 

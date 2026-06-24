@@ -26,7 +26,7 @@ export default function PublicNews() {
   return (
     <div className="max-w-4xl mx-auto px-6 py-12">
       <div className="mb-8">
-        <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-2">School Updates</p>
+        <p className="text-teal-600 text-xs uppercase tracking-widest font-medium mb-2">School Updates</p>
         <h1 className="font-display text-4xl text-slate-900 mb-3">News & Announcements</h1>
         <p className="text-slate-500">Stay up to date with everything happening at Academia.</p>
       </div>
@@ -36,7 +36,7 @@ export default function PublicNews() {
         <Lock size={16} className="text-slate-400 flex-shrink-0" />
         <p className="text-sm text-slate-500">
           Staff, students, and families have access to additional internal announcements.{' '}
-          <Link to="/login" className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2">Sign in</Link> to see all updates.
+          <Link to="/login" className="text-teal-600 hover:text-teal-700 font-medium underline underline-offset-2">Sign in</Link> to see all updates.
         </p>
       </div>
 
@@ -47,7 +47,7 @@ export default function PublicNews() {
             key={c}
             onClick={() => setFilter(c)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize ${
-              filter === c ? 'bg-slate-900 text-white' : 'text-slate-500 hover:text-slate-900'
+              filter === c ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-900'
             }`}
           >
             {c === 'all' ? `All (${announcements.length})` : `${c} (${announcements.filter(a => a.category === c).length})`}
@@ -80,7 +80,7 @@ export default function PublicNews() {
                 {ann.body}
               </p>
             )}
-            <p className="text-xs text-yellow-600 mt-1">{expanded === ann.id ? 'Show less ↑' : 'Read more ↓'}</p>
+            <p className="text-xs text-teal-600 mt-1">{expanded === ann.id ? 'Show less ↑' : 'Read more ↓'}</p>
           </div>
         ))}
       </div>

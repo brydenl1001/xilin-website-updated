@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Users, UserCheck, Coins, TrendingUp } from 'lucide-react'
-import { listProfiles, listEnrollments, listPayments, listAnnouncements, listClasses, getAttendanceSummary } from '../../lib/supabaseClient'
+import { listProfiles, listEnrollmentApplications, listPayments, listAnnouncements, listClasses, getAttendanceSummary } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, Button, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
 
@@ -18,16 +18,16 @@ export default function AdminDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [students, enrollments, payments, annData, classes] = await Promise.all([
+        const [students, applications, payments, annData, classes] = await Promise.all([
           listProfiles('student'),
-          listEnrollments('pending'),
+          listEnrollmentApplications('pending'),
           listPayments('paid'),
           listAnnouncements(),
           listClasses(),
         ])
 
         setStudentCount(students.length)
-        setPendingEnrollments(enrollments.length)
+        setPendingEnrollments(applications.length)
         setFeesCollected(payments.reduce((s, p) => s + Number(p.amount), 0))
         setAnnouncements(annData.slice(0, 4))
 
@@ -56,7 +56,7 @@ export default function AdminDashboard() {
 
   const stats = [
     { label: 'Total Students', value: studentCount.toLocaleString(), delta: 'Active accounts', trend: 'up', Icon: Users },
-    { label: 'Pending Admissions', value: pendingEnrollments, delta: 'Awaiting review', trend: pendingEnrollments > 0 ? 'warn' : 'up', Icon: UserCheck },
+    { label: 'Pending Applications', value: pendingEnrollments, delta: 'Awaiting review', trend: pendingEnrollments > 0 ? 'warn' : 'up', Icon: UserCheck },
     { label: 'Fees Collected', value: `$${feesCollected.toLocaleString()}`, delta: 'All-time paid', trend: 'up', Icon: Coins },
     { label: 'Avg. Attendance', value: `${avgAttendance}%`, delta: 'Today, sample of classes', trend: 'up', Icon: TrendingUp },
   ]
@@ -64,15 +64,15 @@ export default function AdminDashboard() {
   return (
     <div className="max-w-6xl animate-fade-in">
       {/* Welcome */}
-      <div className="relative bg-slate-900 rounded-2xl p-6 mb-6 overflow-hidden flex items-center justify-between">
-        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-yellow-400/5 pointer-events-none" />
+      <div className="relative bg-slate-800 rounded-2xl p-6 mb-6 overflow-hidden flex items-center justify-between">
+        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-teal-400/5 pointer-events-none" />
         <div>
-          <p className="text-yellow-400 text-xs uppercase tracking-widest mb-1">Admin Portal</p>
+          <p className="text-teal-400 text-xs uppercase tracking-widest mb-1">Admin Portal</p>
           <h2 className="font-display text-2xl text-white mb-1">School Overview</h2>
           <p className="text-slate-400 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/enrollments"><Button variant="gold" size="sm">View Enrollments</Button></Link>
+          <Link to="/applications"><Button variant="gold" size="sm">Review Applications</Button></Link>
           <Link to="/announcements"><Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">+ Notice</Button></Link>
         </div>
       </div>
@@ -89,7 +89,7 @@ export default function AdminDashboard() {
         {/* Recent Announcements */}
         <Card>
           <SectionHeader title="Recent Announcements"
-            action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
+            action={<Link to="/announcements" className="text-xs text-teal-600 hover:text-teal-700">View all</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
           ) : announcements.length === 0 ? (
@@ -109,7 +109,7 @@ export default function AdminDashboard() {
         {/* Attendance */}
         <Card>
           <SectionHeader title="Today's Attendance"
-            action={<Link to="/attendance" className="text-xs text-yellow-600 hover:text-yellow-700">Full report</Link>} />
+            action={<Link to="/attendance" className="text-xs text-teal-600 hover:text-teal-700">Full report</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
           ) : classAttendance.length === 0 ? (

@@ -45,8 +45,8 @@ export default function TeacherMyClasses() {
           <button onClick={() => setSelected(null)} className="text-sm text-slate-500 hover:text-slate-800 mb-5 flex items-center gap-1 transition-colors">
             ← Back to all classes
           </button>
-          <div className="bg-slate-900 rounded-2xl p-6 mb-5 text-white">
-            <p className="text-yellow-400 text-xs uppercase tracking-widest mb-2">{selected.courses?.name}</p>
+          <div className="bg-slate-800 rounded-2xl p-6 mb-5 text-white">
+            <p className="text-teal-400 text-xs uppercase tracking-widest mb-2">{selected.courses?.name}</p>
             <h2 className="font-display text-2xl mb-1">{selected.name}</h2>
             <div className="flex gap-6 mt-3 text-sm text-slate-400">
               {selected.room && <span>{selected.room}</span>}
@@ -65,7 +65,7 @@ export default function TeacherMyClasses() {
               <div className="grid grid-cols-2 gap-2">
                 {roster.map(r => (
                   <div key={r.id} className="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-lg">
-                    <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-semibold text-yellow-700 flex-shrink-0">
+                    <div className="w-7 h-7 rounded-full bg-teal-100 flex items-center justify-center text-xs font-semibold text-teal-700 flex-shrink-0">
                       {r.profiles?.full_name?.split(' ').map(n => n[0]).join('') || '?'}
                     </div>
                     <span className="text-sm text-slate-700">{r.profiles?.full_name}</span>
@@ -84,8 +84,8 @@ export default function TeacherMyClasses() {
           {classes.map(cls => (
             <Card key={cls.id} onClick={() => openClass(cls)} className="hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between mb-3">
-                <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center">
-                  <BookOpen size={18} className="text-yellow-600" />
+                <div className="w-10 h-10 rounded-xl bg-teal-50 flex items-center justify-center">
+                  <BookOpen size={18} className="text-teal-600" />
                 </div>
                 <Badge variant="academics">{cls.courses?.subject_area || 'General'}</Badge>
               </div>

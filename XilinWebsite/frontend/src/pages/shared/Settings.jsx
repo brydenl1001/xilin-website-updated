@@ -31,10 +31,10 @@ export default function Settings() {
       </Card>
       <Card>
         <h3 className="font-display text-base text-slate-900 mb-4">Notifications</h3>
-        {['Email me about new announcements', 'Email me about payment reminders', 'Email me about grade updates'].map(label => (
+        {['Email me about new announcements', 'Email me about payment reminders', 'Email me about class updates'].map(label => (
           <label key={label} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0 cursor-pointer">
             <span className="text-sm text-slate-700">{label}</span>
-            <input type="checkbox" defaultChecked className="accent-yellow-400 w-4 h-4 cursor-pointer" />
+            <input type="checkbox" defaultChecked className="accent-teal-400 w-4 h-4 cursor-pointer" />
           </label>
         ))}
       </Card>

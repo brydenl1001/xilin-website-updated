@@ -1,9 +1,16 @@
 import { useState, useEffect } from 'react'
 import { CreditCard, Download, RefreshCw } from 'lucide-react'
 import { listPayments, confirmSandboxPayment } from '../../lib/supabaseClient'
-import { Badge, Button, Card, Modal, Input, PageHeader, Table, Tr, Td } from '../../components/ui'
+import { Badge, Button, Card, Modal, Input, PageHeader, Table, Tr, Td, ListToolbar } from '../../components/ui'
+import { useListControls } from '../../hooks/useListControls'
 
 const STATUS_VARIANT = { paid: 'success', pending: 'warning', failed: 'danger' }
+const SORT_OPTIONS = [
+  { key: 'paid_at', label: 'Date' },
+  { key: 'profiles.full_name', label: 'Student' },
+  { key: 'amount', label: 'Amount' },
+  { key: 'status', label: 'Status' },
+]
 
 function SandboxModal({ open, onClose, payment, onConfirm }) {
   const [processing, setProcessing] = useState(false)
@@ -30,9 +37,9 @@ function SandboxModal({ open, onClose, payment, onConfirm }) {
         🧪 Sandbox mode — confirms via client-side call. For real payments,
         verify with the gateway server-side before marking paid.
       </div>
-      <div className="bg-slate-900 rounded-xl p-5 mb-5 text-white">
+      <div className="bg-slate-800 rounded-xl p-5 mb-5 text-white">
         <p className="text-slate-400 text-xs mb-1">Amount Due</p>
-        <p className="font-display text-3xl text-yellow-400">${Number(payment.amount).toLocaleString()}</p>
+        <p className="font-display text-3xl text-teal-400">${Number(payment.amount).toLocaleString()}</p>
         <p className="text-slate-400 text-xs mt-1">{payment.fee_structures?.name} · {payment.profiles?.full_name}</p>
       </div>
       <div className="space-y-3">
@@ -75,6 +82,9 @@ export default function AdminPayments() {
   const pending = payments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount), 0)
   const failed  = payments.filter(p => p.status === 'failed').length
 
+  const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
+    useListControls(payments, { searchKeys: ['profiles.full_name', 'fee_structures.name', 'transaction_ref'], sortOptions: SORT_OPTIONS, initialDir: 'desc' })
+
   const confirm = async (id) => {
     await confirmSandboxPayment(id)
     load()
@@ -90,6 +100,9 @@ export default function AdminPayments() {
         <Card><p className="text-xs text-slate-400 mb-1">Failed</p><p className="font-display text-2xl text-red-500">{failed}</p><p className="text-xs text-red-500 mt-1">Need attention</p></Card>
       </div>
 
+      <ListToolbar query={query} onQuery={setQuery} placeholder="Search student, fee, or ref..."
+        sortOptions={SORT_OPTIONS} sortKey={sortKey} onSortKey={setSortKey} sortDir={sortDir} onToggleDir={toggleDir} />
+
       <Card className="!p-0 overflow-hidden">
         <div className="px-5 py-4 border-b border-slate-100">
           <h3 className="font-display text-base text-slate-900">Payment History</h3>
@@ -100,7 +113,7 @@ export default function AdminPayments() {
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
           <Table headers={['Student', 'Description', 'Amount', 'Status', 'Date', 'Ref', 'Action']}>
-            {payments.map(p => (
+            {filtered.map(p => (
               <Tr key={p.id}>
                 <Td><span className="font-medium text-slate-900">{p.profiles?.full_name || 'Unknown'}</span></Td>
                 <Td className="text-slate-500">{p.fee_structures?.name || '—'}</Td>

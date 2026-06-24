@@ -5,9 +5,9 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Crimson Text', 'DM Sans', sans-serif;
     background: #F8FAFC;
-    color: #0F172A;
+    color: #164E63;
     -webkit-font-smoothing: antialiased;
   }
 }
@@ -15,8 +15,8 @@
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar { width: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-  .scrollbar-thin::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
-  .font-display { font-family: 'Playfair Display', serif; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #0E7490; border-radius: 2px; }
+  .font-display { font-family: 'EB Garamond', serif; }
   .bg-navy\/8 { background-color: rgba(15,23,42,0.08); }
   .bg-white\/3 { background-color: rgba(255,255,255,0.03); }
   .bg-white\/4 { background-color: rgba(255,255,255,0.04); }

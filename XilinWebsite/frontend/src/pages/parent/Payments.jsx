@@ -115,9 +115,9 @@ export default function ParentPayments() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-4 text-xs text-amber-700">
               🧪 Sandbox mode — confirms via client-side call only
             </div>
-            <div className="bg-slate-900 rounded-xl p-4 mb-4">
+            <div className="bg-slate-800 rounded-xl p-4 mb-4">
               <p className="text-slate-400 text-xs mb-1">Amount Due</p>
-              <p className="font-display text-2xl text-yellow-400">${Number(payTarget.amount).toLocaleString()}</p>
+              <p className="font-display text-2xl text-teal-400">${Number(payTarget.amount).toLocaleString()}</p>
               <p className="text-slate-400 text-xs mt-1">{payTarget.fee_structures?.name}</p>
             </div>
             <div className="space-y-3">

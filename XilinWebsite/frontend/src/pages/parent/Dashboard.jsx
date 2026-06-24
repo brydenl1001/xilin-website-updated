@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { BarChart2, CalendarCheck, Coins, MessageSquare } from 'lucide-react'
-import { getOwnGrades, getOwnPayments, listAnnouncements } from '../../lib/supabaseClient'
-import { StatCard, Card, Badge, SectionHeader, Select } from '../../components/ui'
+import { BookOpen, Coins, MessageSquare } from 'lucide-react'
+import { getOwnPayments, getOwnEnrollments, listAnnouncements } from '../../lib/supabaseClient'
+import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
@@ -9,25 +9,25 @@ const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-b
 
 export default function ParentDashboard() {
   const { user } = useAuth()
-  const students = (user.familyMembers || []).filter(m => m.relationship === 'student')
-  const [childId, setChildId] = useState(students[0]?.id || '')
-  const [grades, setGrades] = useState([])
+  const members = (user.familyMembers || [])
+  const [memberId, setMemberId] = useState(members[0]?.id || '')
+  const [enrollments, setEnrollments] = useState([])
   const [payments, setPayments] = useState([])
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
 
-  const child = students.find(s => s.id === childId)
+  const member = members.find(s => s.id === memberId)
 
   useEffect(() => {
-    if (!childId) { setLoading(false); return }
+    if (!memberId) { setLoading(false); return }
     const load = async () => {
       try {
-        const [gradeData, paymentData, annData] = await Promise.all([
-          getOwnGrades(childId),
-          getOwnPayments(childId),
+        const [enrollData, paymentData, annData] = await Promise.all([
+          getOwnEnrollments(memberId),
+          getOwnPayments(memberId),
           listAnnouncements(),
         ])
-        setGrades(gradeData)
+        setEnrollments(enrollData)
         setPayments(paymentData)
         setAnnouncements(annData.slice(0, 4))
       } catch (err) {
@@ -37,48 +37,46 @@ export default function ParentDashboard() {
       }
     }
     load()
-  }, [childId])
+  }, [memberId])
 
-  const avgScore = grades.length
-    ? Math.round(grades.reduce((s, g) => s + (Number(g.score) / Number(g.max_score)) * 100, 0) / grades.length)
-    : 0
+  const myClasses = enrollments.filter(e => e.status === 'enrolled')
   const pendingFees = payments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount), 0)
 
   const stats = [
-    { label: "Child's Average", value: `${avgScore}%`, delta: child?.full_name || '—', trend: 'up', Icon: BarChart2 },
+    { label: 'Enrolled Classes', value: myClasses.length, delta: member?.full_name || '—', trend: 'up', Icon: BookOpen },
     { label: 'Outstanding Fees', value: `$${pendingFees.toLocaleString()}`, delta: pendingFees > 0 ? 'Action needed' : 'All paid', trend: pendingFees > 0 ? 'warn' : 'up', Icon: Coins },
     { label: 'Announcements', value: announcements.length, delta: 'New updates', trend: 'up', Icon: MessageSquare },
   ]
 
-  if (students.length === 0) {
+  if (members.length === 0) {
     return (
       <div className="max-w-5xl animate-fade-in">
-        <Card><p className="text-slate-400 text-sm py-6 text-center">No students are linked to your family account yet. Contact the school office.</p></Card>
+        <Card><p className="text-slate-400 text-sm py-6 text-center">No members are linked to your family account yet. Contact the school office.</p></Card>
       </div>
     )
   }
 
   return (
     <div className="max-w-5xl animate-fade-in">
-      <div className="relative bg-slate-900 rounded-2xl p-6 mb-6 overflow-hidden flex items-center justify-between">
-        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-yellow-400/5 pointer-events-none" />
+      <div className="relative bg-slate-800 rounded-2xl p-6 mb-6 overflow-hidden flex items-center justify-between">
+        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-teal-400/5 pointer-events-none" />
         <div>
-          <p className="text-yellow-400 text-xs uppercase tracking-widest mb-1">Parent Portal</p>
+          <p className="text-teal-400 text-xs uppercase tracking-widest mb-1">Family Portal</p>
           <h2 className="font-display text-2xl text-white mb-1">Family Portal</h2>
           <p className="text-slate-400 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
-        {students.length > 1 ? (
+        {members.length > 1 ? (
           <div className="bg-white/5 rounded-xl px-4 py-3 border border-white/10">
             <p className="text-white/40 text-xs mb-1.5">Viewing</p>
-            <select value={childId} onChange={e => setChildId(e.target.value)}
+            <select value={memberId} onChange={e => setMemberId(e.target.value)}
               className="bg-transparent text-white font-display text-base outline-none cursor-pointer">
-              {students.map(s => <option key={s.id} value={s.id} className="text-slate-900">{s.full_name}</option>)}
+              {members.map(s => <option key={s.id} value={s.id} className="text-slate-900">{s.full_name}</option>)}
             </select>
           </div>
         ) : (
           <div className="bg-white/5 rounded-xl px-4 py-3 text-right border border-white/10">
-            <p className="text-white/40 text-xs mb-0.5">Monitoring</p>
-            <p className="text-white font-display text-base">{child?.full_name}</p>
+            <p className="text-white/40 text-xs mb-0.5">Member</p>
+            <p className="text-white font-display text-base">{member?.full_name}</p>
           </div>
         )}
       </div>
@@ -88,30 +86,28 @@ export default function ParentDashboard() {
       </div>
 
       <div className="grid lg:grid-cols-2 gap-5">
-        {/* Child grades overview */}
+        {/* Member's enrolled classes */}
         <Card>
-          <SectionHeader title="Recent Grades"
-            action={<Link to="/child-grades" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
+          <SectionHeader title="Enrolled Classes"
+            action={<Link to="/child-timetable" className="text-xs text-teal-600 hover:text-teal-700">Timetable</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
-          ) : grades.length === 0 ? (
-            <p className="text-slate-400 text-sm py-6">No grades recorded yet.</p>
+          ) : myClasses.length === 0 ? (
+            <p className="text-slate-400 text-sm py-6">No classes enrolled yet.</p>
           ) : (
-            <div className="space-y-3">
-              {grades.slice(0, 4).map(g => {
-                const pct = Math.round((Number(g.score) / Number(g.max_score)) * 100)
-                return (
-                  <div key={g.id} className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0 mr-4">
-                      <p className="text-sm font-medium text-slate-900 truncate">{g.subject}</p>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden mt-1">
-                        <div className={`h-full rounded-full ${pct >= 90 ? 'bg-emerald-400' : pct >= 75 ? 'bg-blue-400' : 'bg-amber-400'}`} style={{ width: `${pct}%` }} />
-                      </div>
-                    </div>
-                    <span className="text-sm font-bold text-slate-700">{pct}%</span>
+            <div className="space-y-2">
+              {myClasses.map(e => (
+                <div key={e.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <div>
+                    <p className="text-sm font-medium text-slate-900">{e.classes?.name || e.classes?.courses?.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {e.classes?.courses?.subject_area}
+                      {e.classes?.day_of_week ? ` · ${e.classes.day_of_week} ${e.classes.start_time?.slice(0,5) || ''}` : ''}
+                    </p>
                   </div>
-                )
-              })}
+                  <Badge variant="enrolled">Enrolled</Badge>
+                </div>
+              ))}
             </div>
           )}
         </Card>
@@ -119,7 +115,7 @@ export default function ParentDashboard() {
         {/* Announcements */}
         <Card>
           <SectionHeader title="Announcements"
-            action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
+            action={<Link to="/announcements" className="text-xs text-teal-600 hover:text-teal-700">View all</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
           ) : announcements.length === 0 ? (

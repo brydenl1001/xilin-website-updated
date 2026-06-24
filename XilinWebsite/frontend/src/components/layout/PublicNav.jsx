@@ -18,7 +18,7 @@ export default function PublicNav() {
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" className="font-display text-xl text-slate-900">
-          Aca<span className="text-yellow-500">demia</span>
+          Aca<span className="text-teal-600">demia</span>
         </Link>
 
         {/* Desktop */}
@@ -29,7 +29,7 @@ export default function PublicNav() {
               to={to}
               className={`px-4 py-2 rounded-lg text-sm transition-colors ${
                 pathname === to
-                  ? 'text-slate-900 font-medium bg-slate-100'
+                  ? 'text-teal-800 font-medium bg-teal-50'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
@@ -48,7 +48,7 @@ export default function PublicNav() {
         </div>
 
         {/* Mobile toggle */}
-        <button onClick={() => setOpen(o => !o)} className="md:hidden text-slate-500">
+        <button onClick={() => setOpen(o => !o)} className="md:hidden text-slate-500 cursor-pointer">
           {open ? <X size={20} /> : <Menu size={20} />}
         </button>
       </div>
@@ -61,7 +61,7 @@ export default function PublicNav() {
               key={to}
               to={to}
               onClick={() => setOpen(false)}
-              className="block px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+              className="block px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-800 transition-colors"
             >
               {label}
             </Link>
