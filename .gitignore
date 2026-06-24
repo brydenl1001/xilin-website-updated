@@ -22,3 +22,12 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Claude Code — keep launch.json, ignore the rest
+.claude/skills/
+.claude/settings.local.json
+__pycache__/
+
+# Environment files
+.env
+.env.*
