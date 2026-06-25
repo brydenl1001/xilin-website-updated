@@ -57,8 +57,8 @@ export function AuthProvider({ children }) {
   }
 
   // ─── Normalized `user` shape for the rest of the app ───────────────────────
-  // type 'profile' → role is admin/teacher/student, use fields directly
-  // type 'family'  → synthetic role 'parent', plus raw family data + members
+  // type 'profile' → role is admin/teacher (staff logins), use fields directly
+  // type 'family'  → synthetic role 'family' (household login), plus members
   const user = !identity
     ? null
     : identity.type === 'profile'
@@ -66,7 +66,7 @@ export function AuthProvider({ children }) {
       : {
           id: identity.id,
           full_name: identity.family_name,
-          role: 'parent',
+          role: 'family',
           email: identity.email,
           avatar_url: null,
           familyMembers: identity.family_members?.map(m => ({ ...m.profiles, relationship: m.relationship })) || [],

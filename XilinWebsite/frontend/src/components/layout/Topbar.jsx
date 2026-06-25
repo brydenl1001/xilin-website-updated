@@ -73,7 +73,7 @@ function NotificationsBell() {
       <button onClick={toggle} aria-label="Notifications"
         className="relative text-slate-500 hover:text-slate-800 transition-colors p-1 cursor-pointer">
         <Bell size={17} />
-        {hasUnread && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-teal-500 rounded-full" />}
+        {hasUnread && <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 bg-yellow-500 rounded-full" />}
       </button>
 
       {open && (
@@ -84,9 +84,9 @@ function NotificationsBell() {
 
           {user?.role === 'admin' && pending > 0 && (
             <Link to="/applications" onClick={() => setOpen(false)}
-              className="flex items-center gap-3 px-4 py-3 bg-teal-50 hover:bg-teal-100 transition-colors border-b border-slate-100">
-              <Inbox size={16} className="text-teal-600 flex-shrink-0" />
-              <span className="text-sm text-teal-800">
+              className="flex items-center gap-3 px-4 py-3 bg-yellow-50 hover:bg-yellow-100 transition-colors border-b border-slate-100">
+              <Inbox size={16} className="text-yellow-600 flex-shrink-0" />
+              <span className="text-sm text-yellow-800">
                 {pending} application{pending !== 1 ? 's' : ''} awaiting review
               </span>
             </Link>
@@ -108,7 +108,7 @@ function NotificationsBell() {
           </div>
 
           <Link to="/announcements" onClick={() => setOpen(false)}
-            className="block px-4 py-2.5 text-center text-xs text-teal-600 hover:text-teal-700 hover:bg-slate-50 transition-colors border-t border-slate-100">
+            className="block px-4 py-2.5 text-center text-xs text-yellow-600 hover:text-yellow-700 hover:bg-slate-50 transition-colors border-t border-slate-100">
             View all announcements
           </Link>
         </div>

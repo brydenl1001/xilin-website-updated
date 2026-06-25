@@ -5,9 +5,9 @@
 @layer base {
   *, *::before, *::after { box-sizing: border-box; }
   body {
-    font-family: 'Crimson Text', 'DM Sans', sans-serif;
+    font-family: 'Crimson Text', 'Noto Sans SC', 'DM Sans', sans-serif;
     background: #F8FAFC;
-    color: #164E63;
+    color: #0F172A;
     -webkit-font-smoothing: antialiased;
   }
 }
@@ -15,9 +15,10 @@
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar { width: 4px; }
   .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
-  .scrollbar-thin::-webkit-scrollbar-thumb { background: #0E7490; border-radius: 2px; }
-  .font-display { font-family: 'EB Garamond', serif; }
-  .bg-navy\/8 { background-color: rgba(15,23,42,0.08); }
+  .scrollbar-thin::-webkit-scrollbar-thumb { background: #1B3A73; border-radius: 2px; }
+  .font-display { font-family: 'EB Garamond', 'Noto Serif SC', serif; }
+  .font-zh { font-family: 'Noto Sans SC', sans-serif; }
+  .bg-navy\/8 { background-color: rgba(15,35,80,0.08); }
   .bg-white\/3 { background-color: rgba(255,255,255,0.03); }
   .bg-white\/4 { background-color: rgba(255,255,255,0.04); }
   .border-white\/8 { border-color: rgba(255,255,255,0.08); }

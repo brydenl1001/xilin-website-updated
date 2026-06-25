@@ -2,12 +2,12 @@ import { useState, useEffect } from 'react'
 import { CreditCard, RefreshCw, Download } from 'lucide-react'
 import { getOwnPayments, confirmSandboxPayment } from '../../lib/supabaseClient'
 import { Badge, Button, Card, Modal, Input, PageHeader, Select } from '../../components/ui'
-import { useSelectedChild } from '../../hooks/useSelectedChild'
+import { useSelectedMember } from '../../hooks/useSelectedMember'
 
 const STATUS_VARIANT = { paid: 'success', pending: 'warning', failed: 'danger' }
 
-export default function ParentPayments() {
-  const { students, childId, setChildId, child } = useSelectedChild()
+export default function FamilyPayments() {
+  const { members: students, memberId: childId, setMemberId: setChildId, member: child } = useSelectedMember()
   const [payments, setPayments] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -28,7 +28,7 @@ export default function ParentPayments() {
   if (students.length === 0) {
     return (
       <div className="max-w-3xl animate-fade-in">
-        <Card><p className="text-slate-400 text-sm py-6 text-center">No students linked to your family account yet.</p></Card>
+        <Card><p className="text-slate-400 text-sm py-6 text-center">No members linked to your family account yet.</p></Card>
       </div>
     )
   }
@@ -53,7 +53,7 @@ export default function ParentPayments() {
     <div className="max-w-3xl animate-fade-in">
       <PageHeader
         title="Payments"
-        subtitle={`Fee history for ${child?.full_name || 'your child'}`}
+        subtitle={`Fee history for ${child?.full_name || 'this member'}`}
         action={students.length > 1 && (
           <Select id="child-select" value={childId} onChange={e => setChildId(e.target.value)} className="w-44">
             {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
@@ -115,9 +115,9 @@ export default function ParentPayments() {
             <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5 mb-4 text-xs text-amber-700">
               🧪 Sandbox mode — confirms via client-side call only
             </div>
-            <div className="bg-slate-800 rounded-xl p-4 mb-4">
+            <div className="bg-navy rounded-xl p-4 mb-4">
               <p className="text-slate-400 text-xs mb-1">Amount Due</p>
-              <p className="font-display text-2xl text-teal-400">${Number(payTarget.amount).toLocaleString()}</p>
+              <p className="font-display text-2xl text-yellow-400">${Number(payTarget.amount).toLocaleString()}</p>
               <p className="text-slate-400 text-xs mt-1">{payTarget.fee_structures?.name}</p>
             </div>
             <div className="space-y-3">

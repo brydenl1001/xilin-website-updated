@@ -68,7 +68,7 @@ export default function AdminFamilies() {
                 <Td className="text-slate-600">{f.family_members?.length || 0}</Td>
                 <Td className="text-slate-500 text-xs">{f.email}</Td>
                 <Td className="text-slate-500 text-xs">{f.phone || '—'}</Td>
-                <Td><span className="text-xs text-teal-600">Manage →</span></Td>
+                <Td><span className="text-xs text-yellow-600">Manage →</span></Td>
               </Tr>
             ))}
           </Table>
@@ -195,12 +195,12 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
       </button>
 
       {/* Family header */}
-      <div className="bg-slate-800 rounded-2xl p-6 mb-5 text-white">
+      <div className="bg-navy rounded-2xl p-6 mb-5 text-white">
         <p className="font-display text-2xl mb-2">{family.family_name}</p>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-300">
-          <span className="flex items-center gap-1.5"><Mail size={13} className="text-teal-400" />{family.email}</span>
-          {family.phone && <span className="flex items-center gap-1.5"><Phone size={13} className="text-teal-400" />{family.phone}</span>}
-          <span className="flex items-center gap-1.5"><Users size={13} className="text-teal-400" />{members.length} member{members.length !== 1 ? 's' : ''}</span>
+          <span className="flex items-center gap-1.5"><Mail size={13} className="text-yellow-400" />{family.email}</span>
+          {family.phone && <span className="flex items-center gap-1.5"><Phone size={13} className="text-yellow-400" />{family.phone}</span>}
+          <span className="flex items-center gap-1.5"><Users size={13} className="text-yellow-400" />{members.length} member{members.length !== 1 ? 's' : ''}</span>
         </div>
         <p className="text-[11px] text-white/40 mt-3">Family ID: <span className="font-mono">{family.id}</span></p>
       </div>
@@ -228,7 +228,7 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => openEditMember(m)} disabled={busy} title="Edit member"
-                      className="text-slate-400 hover:text-teal-600 transition-colors cursor-pointer p-1 disabled:opacity-40">
+                      className="text-slate-400 hover:text-yellow-600 transition-colors cursor-pointer p-1 disabled:opacity-40">
                       <Pencil size={14} />
                     </button>
                     <button onClick={() => removeMember(m)} disabled={busy} title="Remove member"
@@ -245,12 +245,12 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
                     {enrolled.length > 0 ? (
                       <div className="flex flex-wrap gap-2 mb-3">
                         {enrolled.map(e => (
-                          <span key={e.id} className="inline-flex items-center gap-1.5 text-xs bg-teal-50 border border-teal-200 text-teal-800 rounded-full pl-3 pr-1.5 py-1">
+                          <span key={e.id} className="inline-flex items-center gap-1.5 text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-full pl-3 pr-1.5 py-1">
                             <BookOpen size={11} />
                             {e.classes?.name || e.classes?.courses?.name || 'Class'}
-                            {e.classes?.start_time && <span className="text-teal-500">Sun {fmtTime(e.classes.start_time)}</span>}
+                            {e.classes?.start_time && <span className="text-yellow-500">Sun {fmtTime(e.classes.start_time)}</span>}
                             <button onClick={() => removeClass(m.id, e.id)} disabled={busy}
-                              className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-teal-200 cursor-pointer disabled:opacity-40" title="Remove">
+                              className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-yellow-200 cursor-pointer disabled:opacity-40" title="Remove">
                               <X size={11} />
                             </button>
                           </span>

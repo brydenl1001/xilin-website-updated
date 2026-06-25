@@ -81,7 +81,7 @@ export default function TeacherAttendance() {
           {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
         </Select>
         <input type="date" value={date} onChange={e => { setDate(e.target.value); setSaved(false) }}
-          className="px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 transition-all" />
+          className="px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-400 focus:ring-2 focus:ring-yellow-100 transition-all" />
         <div className="ml-auto flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => markAll(true)}>Mark All Present</Button>
           <Button variant="outline" size="sm" onClick={() => markAll(false)}>Mark All Absent</Button>

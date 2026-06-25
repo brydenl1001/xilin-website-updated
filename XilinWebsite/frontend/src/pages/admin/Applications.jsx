@@ -66,9 +66,9 @@ export default function AdminApplications() {
     <div className="max-w-5xl animate-fade-in">
       <PageHeader title="Applications" subtitle="Review enrollment applications from the public site" />
 
-      <div className="bg-teal-50 border border-teal-200 rounded-xl p-4 mb-5 flex items-start gap-3">
-        <ShieldCheck size={16} className="text-teal-600 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-teal-800">
+      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-5 flex items-start gap-3">
+        <ShieldCheck size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-yellow-800">
           Approving an application creates the family login (for new families), a member profile, the family link,
           and enrollments into the chosen classes. Nothing is activated until you approve.
         </p>
@@ -78,8 +78,8 @@ export default function AdminApplications() {
       <div className="grid grid-cols-3 gap-3 mb-5">
         {STATUS_ORDER.map(s => (
           <button key={s} onClick={() => setFilter(filter === s ? 'all' : s)}
-            className={`rounded-xl p-4 text-left border transition-all cursor-pointer ${filter === s ? 'bg-slate-800 border-slate-800' : 'bg-white border-slate-200 hover:border-teal-300'}`}>
-            <p className={`font-display text-2xl font-semibold ${filter === s ? 'text-teal-400' : 'text-slate-900'}`}>{counts[s] || 0}</p>
+            className={`rounded-xl p-4 text-left border transition-all cursor-pointer ${filter === s ? 'bg-navy border-navy' : 'bg-white border-slate-200 hover:border-yellow-300'}`}>
+            <p className={`font-display text-2xl font-semibold ${filter === s ? 'text-yellow-400' : 'text-slate-900'}`}>{counts[s] || 0}</p>
             <p className={`text-xs capitalize mt-0.5 ${filter === s ? 'text-white/60' : 'text-slate-400'}`}>{s}</p>
           </button>
         ))}
@@ -124,7 +124,7 @@ export default function AdminApplications() {
           <div className="space-y-4">
             {/* Header */}
             <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
-              <div className="w-11 h-11 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center font-semibold flex-shrink-0">
+              <div className="w-11 h-11 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center font-semibold flex-shrink-0">
                 {selected.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
@@ -159,7 +159,7 @@ export default function AdminApplications() {
               {selected.desired_course_ids?.length ? (
                 <div className="flex flex-wrap gap-1.5">
                   {selected.desired_course_ids.map(id => (
-                    <span key={id} className="text-xs px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 font-medium">{courseName(id)}</span>
+                    <span key={id} className="text-xs px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">{courseName(id)}</span>
                   ))}
                 </div>
               ) : <p className="text-sm text-slate-400">None selected</p>}

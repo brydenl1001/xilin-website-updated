@@ -38,9 +38,9 @@ export default function TeacherDashboard() {
 
   return (
     <div className="max-w-6xl animate-fade-in">
-      <div className="relative bg-slate-800 rounded-2xl p-6 mb-6 overflow-hidden">
-        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-teal-400/5 pointer-events-none" />
-        <p className="text-teal-400 text-xs uppercase tracking-widest mb-1">Teacher Portal</p>
+      <div className="relative bg-navy rounded-2xl p-6 mb-6 overflow-hidden">
+        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-yellow-400/5 pointer-events-none" />
+        <p className="text-yellow-400 text-xs uppercase tracking-widest mb-1">Teacher Portal</p>
         <h2 className="font-display text-2xl text-white mb-1">Your Teaching Hub</h2>
         <p className="text-slate-400 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
       </div>
@@ -53,7 +53,7 @@ export default function TeacherDashboard() {
         {/* My Classes */}
         <Card>
           <SectionHeader title="My Classes"
-            action={<Link to="/my-classes" className="text-xs text-teal-600 hover:text-teal-700">Manage</Link>} />
+            action={<Link to="/my-classes" className="text-xs text-yellow-600 hover:text-yellow-700">Manage</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
           ) : classes.length === 0 ? (
@@ -76,7 +76,7 @@ export default function TeacherDashboard() {
         {/* Recent Announcements */}
         <Card>
           <SectionHeader title="Announcements"
-            action={<Link to="/announcements" className="text-xs text-teal-600 hover:text-teal-700">View all</Link>} />
+            action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
           ) : announcements.length === 0 ? (

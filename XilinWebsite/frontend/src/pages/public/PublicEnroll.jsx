@@ -13,7 +13,7 @@ function StepIndicator({ current }) {
           <div className="flex flex-col items-center">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
               i < current ? 'bg-green-500 text-white' :
-              i === current ? 'bg-slate-800 text-teal-400 ring-4 ring-slate-800/20' :
+              i === current ? 'bg-navy text-yellow-400 ring-4 ring-navy/20' :
               'bg-slate-200 text-slate-400'
             }`}>
               {i < current ? <CheckCircle size={16} /> : i + 1}
@@ -106,11 +106,11 @@ export default function PublicEnroll() {
         </div>
         <h2 className="font-display text-3xl text-slate-900 mb-3">Application Submitted!</h2>
         <p className="text-slate-500 mb-6 leading-relaxed">
-          Thank you for applying to Academia. Your request has been sent to our admissions team for
+          Thank you for applying to Xilin. Your request has been sent to our admissions team for
           review. Once an administrator approves it, we'll email you at <strong>{form.email}</strong>{' '}
           with your account details and next steps.
         </p>
-        <div className="bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 mb-8 flex items-center justify-center gap-2 text-sm text-teal-800">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 mb-8 flex items-center justify-center gap-2 text-sm text-yellow-800">
           <ShieldCheck size={16} className="flex-shrink-0" />
           Pending administrator approval
         </div>
@@ -127,7 +127,7 @@ export default function PublicEnroll() {
   return (
     <div className="max-w-2xl mx-auto px-6 py-12">
       <div className="text-center mb-10">
-        <p className="text-teal-600 text-xs uppercase tracking-widest font-medium mb-2">Admissions</p>
+        <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-2">Admissions</p>
         <h1 className="font-display text-4xl text-slate-900 mb-3">Apply to Enroll</h1>
         <p className="text-slate-500">Students and parents are both welcome to take classes. Complete the form below — every application is reviewed by an administrator before it's approved.</p>
       </div>
@@ -151,7 +151,7 @@ export default function PublicEnroll() {
                     onClick={() => setForm(f => ({ ...f, applicant_type: opt.val }))}
                     className={`rounded-xl px-4 py-3 text-sm font-medium border transition-all cursor-pointer ${
                       form.applicant_type === opt.val
-                        ? 'border-teal-500 bg-teal-50 text-teal-800'
+                        ? 'border-yellow-500 bg-yellow-50 text-yellow-800'
                         : 'border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
@@ -185,7 +185,7 @@ export default function PublicEnroll() {
                   onClick={() => setForm(f => ({ ...f, family_mode: opt.val }))}
                   className={`rounded-xl px-4 py-3 text-sm font-medium border transition-all flex items-center gap-2 cursor-pointer ${
                     form.family_mode === opt.val
-                      ? 'border-teal-500 bg-teal-50 text-teal-800'
+                      ? 'border-yellow-500 bg-yellow-50 text-yellow-800'
                       : 'border-slate-200 text-slate-600 hover:border-slate-300'
                   }`}
                 >
@@ -247,11 +247,11 @@ export default function PublicEnroll() {
                     type="button"
                     onClick={() => toggleClass(course.id)}
                     className={`w-full text-left rounded-xl px-4 py-3 border transition-all flex items-start gap-3 cursor-pointer ${
-                      checked ? 'border-teal-500 bg-teal-50' : 'border-slate-200 hover:border-slate-300'
+                      checked ? 'border-yellow-500 bg-yellow-50' : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
                     <span className={`mt-0.5 w-4 h-4 rounded border flex items-center justify-center flex-shrink-0 ${
-                      checked ? 'bg-teal-600 border-teal-600 text-white' : 'border-slate-300'
+                      checked ? 'bg-yellow-500 border-yellow-500 text-slate-900' : 'border-slate-300'
                     }`}>
                       {checked && <CheckCircle size={12} />}
                     </span>
@@ -264,7 +264,7 @@ export default function PublicEnroll() {
               })}
             </div>
             {form.class_ids.length > 0 && (
-              <p className="text-xs text-teal-700 mt-3">{form.class_ids.length} class{form.class_ids.length !== 1 ? 'es' : ''} selected</p>
+              <p className="text-xs text-yellow-700 mt-3">{form.class_ids.length} class{form.class_ids.length !== 1 ? 'es' : ''} selected</p>
             )}
           </div>
         )}
@@ -292,7 +292,7 @@ export default function PublicEnroll() {
 
             <Textarea label="Additional Notes (optional)" id="notes" className="mt-4" placeholder="Anything the admissions team should know..." value={form.notes} onChange={set('notes')} rows={3} />
 
-            <div className="mt-4 bg-teal-50 border border-teal-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-teal-800">
+            <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-xl px-4 py-3 flex items-center gap-2 text-sm text-yellow-800">
               <ShieldCheck size={16} className="flex-shrink-0" />
               This application will be reviewed and must be approved by an administrator.
             </div>

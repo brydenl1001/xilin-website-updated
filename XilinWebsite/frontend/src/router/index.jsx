@@ -31,15 +31,10 @@ import TeacherDashboard  from '../pages/teacher/Dashboard'
 import TeacherMyClasses  from '../pages/teacher/MyClasses'
 import TeacherAttendance from '../pages/teacher/Attendance'
 
-// Student pages
-import StudentDashboard  from '../pages/student/Dashboard'
-import StudentMyPayments from '../pages/student/MyPayments'
-import StudentAttendance from '../pages/student/Attendance'
-
-// Parent pages
-import ParentDashboard       from '../pages/parent/Dashboard'
-import ParentChildAttendance from '../pages/parent/ChildAttendance'
-import ParentPayments        from '../pages/parent/Payments'
+// Family (household) pages
+import FamilyDashboard       from '../pages/family/Dashboard'
+import FamilyChildAttendance from '../pages/family/ChildAttendance'
+import FamilyPayments        from '../pages/family/Payments'
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
@@ -59,8 +54,7 @@ function RoleDashboard() {
   const { user } = useAuth()
   if (user?.role === 'admin')   return <AdminDashboard />
   if (user?.role === 'teacher') return <TeacherDashboard />
-  if (user?.role === 'student') return <StudentDashboard />
-  if (user?.role === 'parent')  return <ParentDashboard />
+  if (user?.role === 'family')  return <FamilyDashboard />
   return <AdminDashboard />
 }
 
@@ -95,18 +89,11 @@ function PortalRoutes() {
           <Route path="/timetable"   element={<Timetable subtitle="Your teaching schedule" />} />
         </>}
 
-        {/* Student */}
-        {role === 'student' && <>
-          <Route path="/attendance"  element={<StudentAttendance />} />
-          <Route path="/timetable"   element={<Timetable subtitle="Your weekly class schedule" />} />
-          <Route path="/my-payments" element={<StudentMyPayments />} />
-        </>}
-
-        {/* Parent */}
-        {role === 'parent' && <>
-          <Route path="/child-attendance"  element={<ParentChildAttendance />} />
+        {/* Family (household) */}
+        {role === 'family' && <>
+          <Route path="/child-attendance"  element={<FamilyChildAttendance />} />
           <Route path="/child-timetable"   element={<Timetable subtitle="Weekly class schedule" />} />
-          <Route path="/payments"          element={<ParentPayments />} />
+          <Route path="/payments"          element={<FamilyPayments />} />
         </>}
 
         {/* Fallback */}

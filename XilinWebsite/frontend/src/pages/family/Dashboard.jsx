@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 
 const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
 
-export default function ParentDashboard() {
+export default function FamilyDashboard() {
   const { user } = useAuth()
   const members = (user.familyMembers || [])
   const [memberId, setMemberId] = useState(members[0]?.id || '')
@@ -58,10 +58,10 @@ export default function ParentDashboard() {
 
   return (
     <div className="max-w-5xl animate-fade-in">
-      <div className="relative bg-slate-800 rounded-2xl p-6 mb-6 overflow-hidden flex items-center justify-between">
-        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-teal-400/5 pointer-events-none" />
+      <div className="relative bg-navy rounded-2xl p-6 mb-6 overflow-hidden flex items-center justify-between">
+        <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-yellow-400/5 pointer-events-none" />
         <div>
-          <p className="text-teal-400 text-xs uppercase tracking-widest mb-1">Family Portal</p>
+          <p className="text-yellow-400 text-xs uppercase tracking-widest mb-1">Family Portal</p>
           <h2 className="font-display text-2xl text-white mb-1">Family Portal</h2>
           <p className="text-slate-400 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
         </div>
@@ -89,7 +89,7 @@ export default function ParentDashboard() {
         {/* Member's enrolled classes */}
         <Card>
           <SectionHeader title="Enrolled Classes"
-            action={<Link to="/child-timetable" className="text-xs text-teal-600 hover:text-teal-700">Timetable</Link>} />
+            action={<Link to="/child-timetable" className="text-xs text-yellow-600 hover:text-yellow-700">Timetable</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
           ) : myClasses.length === 0 ? (
@@ -115,7 +115,7 @@ export default function ParentDashboard() {
         {/* Announcements */}
         <Card>
           <SectionHeader title="Announcements"
-            action={<Link to="/announcements" className="text-xs text-teal-600 hover:text-teal-700">View all</Link>} />
+            action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
           ) : announcements.length === 0 ? (

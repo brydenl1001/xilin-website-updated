@@ -17,8 +17,9 @@ export default function PublicNav() {
   return (
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link to="/" className="font-display text-xl text-slate-900">
-          Aca<span className="text-teal-600">demia</span>
+        <Link to="/" className="flex items-center gap-2.5">
+          <img src="/XilinLogo.jpg" alt="Xilin Northwest Chinese School logo" className="w-9 h-9 rounded-full object-cover" />
+          <span className="font-display text-xl text-slate-900">Xilin<span className="text-yellow-600 font-zh"> 希林</span></span>
         </Link>
 
         {/* Desktop */}
@@ -29,7 +30,7 @@ export default function PublicNav() {
               to={to}
               className={`px-4 py-2 rounded-lg text-sm transition-colors ${
                 pathname === to
-                  ? 'text-teal-800 font-medium bg-teal-50'
+                  ? 'text-yellow-800 font-medium bg-yellow-50'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
               }`}
             >
@@ -61,7 +62,7 @@ export default function PublicNav() {
               key={to}
               to={to}
               onClick={() => setOpen(false)}
-              className="block px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-teal-50 hover:text-teal-800 transition-colors"
+              className="block px-3 py-2.5 rounded-lg text-sm text-slate-600 hover:bg-yellow-50 hover:text-yellow-800 transition-colors"
             >
               {label}
             </Link>

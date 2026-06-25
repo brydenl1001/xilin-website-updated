@@ -89,7 +89,7 @@ export default function Announcements() {
       <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 mb-4 w-fit flex-wrap">
         {CATS.map(c => (
           <button key={c} onClick={() => setFilter(c)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize cursor-pointer ${filter === c ? 'bg-slate-800 text-white' : 'text-slate-500 hover:text-slate-900'}`}>
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all capitalize cursor-pointer ${filter === c ? 'bg-navy text-white' : 'text-slate-500 hover:text-slate-900'}`}>
             {c}
           </button>
         ))}
@@ -112,7 +112,7 @@ export default function Announcements() {
                 {canManage && (
                   <div className="flex items-center gap-1 ml-1" onClick={e => e.stopPropagation()}>
                     <button onClick={() => openEdit(ann)} title="Edit"
-                      className="text-slate-400 hover:text-teal-600 transition-colors cursor-pointer p-1">
+                      className="text-slate-400 hover:text-yellow-600 transition-colors cursor-pointer p-1">
                       <Pencil size={14} />
                     </button>
                     <button onClick={() => handleDelete(ann.id)} disabled={deletingId === ann.id} title="Delete"
@@ -127,7 +127,7 @@ export default function Announcements() {
             {expanded === ann.id && (
               <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3 mt-2 animate-fade-in">{ann.body}</p>
             )}
-            <p className="text-xs text-teal-600 mt-1">{expanded === ann.id ? 'Show less' : 'Read more'}</p>
+            <p className="text-xs text-yellow-600 mt-1">{expanded === ann.id ? 'Show less' : 'Read more'}</p>
           </div>
         ))}
         {!loading && !error && filtered.length === 0 && <p className="text-center text-slate-400 py-12 text-sm">No announcements found.</p>}

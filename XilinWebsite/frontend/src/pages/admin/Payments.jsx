@@ -37,9 +37,9 @@ function SandboxModal({ open, onClose, payment, onConfirm }) {
         🧪 Sandbox mode — confirms via client-side call. For real payments,
         verify with the gateway server-side before marking paid.
       </div>
-      <div className="bg-slate-800 rounded-xl p-5 mb-5 text-white">
+      <div className="bg-navy rounded-xl p-5 mb-5 text-white">
         <p className="text-slate-400 text-xs mb-1">Amount Due</p>
-        <p className="font-display text-3xl text-teal-400">${Number(payment.amount).toLocaleString()}</p>
+        <p className="font-display text-3xl text-yellow-400">${Number(payment.amount).toLocaleString()}</p>
         <p className="text-slate-400 text-xs mt-1">{payment.fee_structures?.name} · {payment.profiles?.full_name}</p>
       </div>
       <div className="space-y-3">

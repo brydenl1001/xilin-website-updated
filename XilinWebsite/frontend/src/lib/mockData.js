@@ -1,15 +1,15 @@
 // Static branding/config content — not backed by any database table.
-// Everything else previously here (mockUser, mockStats, mockEnrollments,
-// mockPayments, mockGrades, mockAttendance, mockTimetable, mockChildren,
-// publicClasses, publicAnnouncements) has been replaced by real Supabase
-// calls via src/lib/supabaseClient.js.
+// Everything else (users, stats, enrollments, payments, attendance, classes,
+// announcements) comes from real Supabase calls via src/lib/supabaseClient.js.
 
 export const schoolInfo = {
-  name: 'Academia',
-  tagline: 'Shaping Minds. Building Futures.',
-  founded: 1987,
-  address: '42 Elmwood Avenue, Chicago, IL 60601',
-  phone: '(312) 555-0190',
-  email: 'info@academia.edu',
-  principalName: 'Dr. Amelia Richardson',
+  name: 'Xilin Northwest Chinese School',
+  nameZh: '希林西北中文学校',
+  shortName: 'Xilin',
+  founded: 1996,
+  tagline: 'Where Chinese Language and Culture Come to Life.',
+  email: 'info@xilinchinese.org',
+  website: 'xilinchinese.org',
+  // NOTE: The public site did not list a physical address, phone number, or
+  // founding year — fill these in here when you have the official details.
 }

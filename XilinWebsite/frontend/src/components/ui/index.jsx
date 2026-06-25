@@ -34,14 +34,14 @@ export function Badge({ children, variant = 'default' }) {
     success:   'bg-green-100 text-green-700',
     warning:   'bg-amber-100 text-amber-700',
     danger:    'bg-red-100 text-red-700',
-    gold:      'bg-teal-100 text-teal-800',
-    navy:      'bg-cyan-100 text-cyan-800',
+    gold:      'bg-yellow-100 text-yellow-800',
+    navy:      'bg-blue-100 text-blue-800',
     urgent:    'bg-red-100 text-red-700',
     events:    'bg-amber-100 text-amber-700',
-    academics: 'bg-cyan-100 text-cyan-700',
+    academics: 'bg-blue-100 text-blue-700',
     general:   'bg-slate-100 text-slate-600',
     pending:   'bg-amber-100 text-amber-700',
-    admitted:  'bg-cyan-100 text-cyan-700',
+    admitted:  'bg-blue-100 text-blue-700',
     enrolled:  'bg-green-100 text-green-700',
     rejected:  'bg-red-100 text-red-700',
     paid:      'bg-green-100 text-green-700',
@@ -57,15 +57,15 @@ export function Badge({ children, variant = 'default' }) {
 
 // ─── Button ───────────────────────────────────────────────────────────────────
 export function Button({ children, variant = 'primary', size = 'md', onClick, type = 'button', disabled, className = '' }) {
-  const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-teal-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
+  const base = 'inline-flex items-center justify-center gap-2 font-medium rounded-lg transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer'
   const sizes = { sm: 'px-3 py-1.5 text-xs', md: 'px-4 py-2 text-sm', lg: 'px-6 py-3 text-base' }
   const variants = {
-    primary:   'bg-teal-600 text-white hover:bg-teal-700 active:scale-95',
-    secondary: 'bg-slate-800 text-white hover:bg-slate-700 active:scale-95',
+    primary:   'bg-yellow-500 text-slate-900 hover:bg-yellow-400 active:scale-95',
+    secondary: 'bg-navy text-white hover:bg-navy-light active:scale-95',
     outline:   'border border-slate-200 text-slate-700 hover:bg-slate-50 active:scale-95',
     ghost:     'text-slate-500 hover:text-slate-900 hover:bg-slate-100',
     danger:    'bg-red-500 text-white hover:bg-red-600 active:scale-95',
-    gold:      'bg-teal-600 text-white hover:bg-teal-700 active:scale-95',
+    gold:      'bg-yellow-500 text-slate-900 hover:bg-yellow-400 active:scale-95',
   }
   return (
     <button
@@ -84,7 +84,7 @@ export function Card({ children, className = '', onClick }) {
   return (
     <div
       onClick={onClick}
-      className={`bg-white border border-slate-200 rounded-xl p-5 ${onClick ? 'cursor-pointer hover:border-teal-300 transition-colors' : ''} ${className}`}
+      className={`bg-white border border-slate-200 rounded-xl p-5 ${onClick ? 'cursor-pointer hover:border-yellow-300 transition-colors' : ''} ${className}`}
     >
       {children}
     </div>
@@ -93,8 +93,8 @@ export function Card({ children, className = '', onClick }) {
 
 // ─── StatCard ─────────────────────────────────────────────────────────────────
 export function StatCard({ label, value, delta, trend, Icon }) {
-  const iconBg    = trend === 'warn' ? 'bg-amber-100' : 'bg-teal-50'
-  const iconColor = trend === 'warn' ? 'text-amber-700' : 'text-teal-700'
+  const iconBg    = trend === 'warn' ? 'bg-amber-100' : 'bg-yellow-50'
+  const iconColor = trend === 'warn' ? 'text-amber-700' : 'text-yellow-700'
   const deltaColor = trend === 'warn' ? 'text-amber-600' : 'text-green-600'
   return (
     <Card className="animate-fade-in">
@@ -124,7 +124,7 @@ export function Input({ label, id, type = 'text', placeholder, value, onChange, 
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all placeholder:text-slate-300"
+        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 transition-all placeholder:text-slate-300"
       />
     </div>
   )
@@ -143,7 +143,7 @@ export function Select({ label, id, value, onChange, children, className = '' })
         id={id}
         value={value}
         onChange={onChange}
-        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all"
+        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 transition-all"
       >
         {children}
       </select>
@@ -166,7 +166,7 @@ export function Textarea({ label, id, placeholder, value, onChange, rows = 4, cl
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-teal-500 focus:ring-2 focus:ring-teal-100 transition-all resize-none placeholder:text-slate-300"
+        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 transition-all resize-none placeholder:text-slate-300"
       />
     </div>
   )
@@ -221,7 +221,7 @@ export function PageHeader({ title, subtitle, action }) {
 export function EmptyState({ message = 'No data found', icon }) {
   return (
     <div className="flex flex-col items-center justify-center py-12 text-center">
-      <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center mb-3 text-teal-400 text-xl">
+      <div className="w-12 h-12 rounded-full bg-yellow-50 flex items-center justify-center mb-3 text-yellow-400 text-xl">
         {icon || '∅'}
       </div>
       <p className="text-sm text-slate-400">{message}</p>

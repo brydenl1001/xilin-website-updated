@@ -4,29 +4,17 @@ export default {
   theme: {
     extend: {
       colors: {
+        // Deep navy for dark surfaces (hero, sidebar, panels)
         navy: {
-          DEFAULT: '#164E63',
-          light: '#0E7490',
-          soft: '#1e293b',
-          muted: '#334155',
-        },
-        teal: {
-          DEFAULT: '#0891B2',
-          light: '#22D3EE',
-          dark: '#155E75',
-          50: '#ECFEFF',
-          100: '#CFFAFE',
-          200: '#A5F3FC',
-          600: '#0891B2',
-          700: '#0E7490',
-          800: '#155E75',
-          900: '#164E63',
+          DEFAULT: '#0F2350',
+          light: '#1B3A73',
+          dark: '#0A1838',
         },
         slate: { page: '#F8FAFC' },
       },
       fontFamily: {
-        display: ['"EB Garamond"', 'serif'],
-        body: ['"Crimson Text"', '"DM Sans"', 'sans-serif'],
+        display: ['"EB Garamond"', '"Noto Serif SC"', 'serif'],
+        body: ['"Crimson Text"', '"Noto Sans SC"', '"DM Sans"', 'sans-serif'],
       },
     },
   },

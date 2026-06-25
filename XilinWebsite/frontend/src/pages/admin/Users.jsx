@@ -97,8 +97,8 @@ export default function AdminUsers() {
       <div className="grid grid-cols-4 gap-3 mb-5">
         {[...ROLE_OPTIONS, 'parent'].map(r => (
           <button key={r} onClick={() => setRoleFilter(roleFilter === r ? 'all' : r)}
-            className={`rounded-xl p-4 text-left border transition-all capitalize cursor-pointer ${roleFilter === r ? 'bg-slate-800 border-slate-800' : 'bg-white border-slate-200 hover:border-teal-300'}`}>
-            <p className={`font-display text-2xl font-semibold ${roleFilter === r ? 'text-teal-400' : 'text-slate-900'}`}>{counts[r] || 0}</p>
+            className={`rounded-xl p-4 text-left border transition-all capitalize cursor-pointer ${roleFilter === r ? 'bg-navy border-navy' : 'bg-white border-slate-200 hover:border-yellow-300'}`}>
+            <p className={`font-display text-2xl font-semibold ${roleFilter === r ? 'text-yellow-400' : 'text-slate-900'}`}>{counts[r] || 0}</p>
             <p className={`text-xs mt-0.5 ${roleFilter === r ? 'text-white/60' : 'text-slate-400'}`}>{r}s</p>
           </button>
         ))}
@@ -158,7 +158,7 @@ export default function AdminUsers() {
               <div className="grid grid-cols-3 gap-2">
                 {KINDS.map(k => (
                   <button key={k.val} type="button" onClick={() => setForm(f => ({ ...f, kind: k.val }))}
-                    className={`rounded-xl px-3 py-2.5 text-xs font-medium border text-left transition-all cursor-pointer ${form.kind === k.val ? 'border-teal-500 bg-teal-50 text-teal-800' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                    className={`rounded-xl px-3 py-2.5 text-xs font-medium border text-left transition-all cursor-pointer ${form.kind === k.val ? 'border-yellow-500 bg-yellow-50 text-yellow-800' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
                     {k.label}
                   </button>
                 ))}

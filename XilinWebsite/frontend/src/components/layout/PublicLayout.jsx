@@ -5,13 +5,16 @@ export default function PublicLayout({ children }) {
     <div className="min-h-screen bg-slate-50 flex flex-col">
       <PublicNav />
       <main className="flex-1">{children}</main>
-      <footer className="bg-slate-800 text-white py-10">
+      <footer className="bg-navy text-white py-10">
         <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <p className="font-display text-lg">Aca<span className="text-teal-400">demia</span></p>
-            <p className="text-slate-400 text-sm mt-0.5">42 Elmwood Avenue, Chicago, IL 60601</p>
+          <div className="flex items-center gap-3">
+            <img src="/XilinLogo.jpg" alt="" className="w-11 h-11 rounded-full object-cover ring-1 ring-white/15" />
+            <div>
+              <p className="font-display text-lg">Xilin<span className="text-yellow-400 font-zh"> 希林</span></p>
+              <p className="text-slate-400 text-sm mt-0.5">Xilin Northwest Chinese School · Est. 1996</p>
+            </div>
           </div>
-          <p className="text-slate-500 text-xs">&copy; 2026 Academia. All rights reserved.</p>
+          <p className="text-slate-500 text-xs">&copy; {new Date().getFullYear()} Xilin Northwest Chinese School. All rights reserved.</p>
         </div>
       </footer>
     </div>

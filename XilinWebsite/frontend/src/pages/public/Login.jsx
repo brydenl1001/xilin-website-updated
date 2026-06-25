@@ -25,21 +25,26 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-slate-50 flex">
       {/* Left panel */}
-      <div className="hidden lg:flex w-5/12 bg-slate-800 flex-col justify-between p-12 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-teal-400/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
+      <div className="hidden lg:flex w-5/12 bg-navy flex-col justify-between p-12 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-72 h-72 rounded-full bg-yellow-400/5 -translate-y-1/3 translate-x-1/3 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-white/3 translate-y-1/3 -translate-x-1/3 pointer-events-none" />
         <div className="relative">
           <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-white text-sm mb-8 transition-colors">
             <ArrowLeft size={14} /> Back to site
           </Link>
-          <p className="font-display text-2xl text-white">Aca<span className="text-teal-400">demia</span></p>
-          <p className="text-slate-400 text-xs uppercase tracking-widest mt-1">School Portal</p>
+          <div className="flex items-center gap-3">
+            <img src="/XilinLogo.jpg" alt="Xilin Northwest Chinese School logo" className="w-12 h-12 rounded-full object-cover ring-1 ring-white/15" />
+            <div>
+              <p className="font-display text-2xl text-white leading-tight">Xilin<span className="text-yellow-400 font-zh"> 希林</span></p>
+              <p className="text-slate-400 text-xs uppercase tracking-widest mt-0.5">School Portal</p>
+            </div>
+          </div>
         </div>
         <div className="relative">
           <p className="text-white/20 font-display text-4xl leading-tight italic mb-4">
-            "Education is the most powerful weapon which you can use to change the world."
+            "A journey of a thousand miles begins with a single step."
           </p>
-          <p className="text-slate-500 text-sm">Nelson Mandela</p>
+          <p className="text-slate-500 text-sm font-zh">千里之行，始于足下 · Chinese proverb</p>
         </div>
         <div className="relative">
           <p className="text-slate-400 text-sm leading-relaxed">
@@ -55,7 +60,10 @@ export default function Login() {
             <Link to="/" className="inline-flex items-center gap-2 text-slate-400 hover:text-slate-700 text-sm mb-4 transition-colors">
               <ArrowLeft size={14} /> Back to site
             </Link>
-            <p className="font-display text-2xl text-slate-900">Aca<span className="text-teal-600">demia</span></p>
+            <div className="flex items-center gap-2.5">
+              <img src="/XilinLogo.jpg" alt="" className="w-9 h-9 rounded-full object-cover" />
+              <p className="font-display text-2xl text-slate-900">Xilin<span className="text-yellow-600 font-zh"> 希林</span></p>
+            </div>
           </div>
 
           <h2 className="font-display text-3xl text-slate-900 mb-1">Welcome back</h2>

@@ -44,28 +44,12 @@ const NAV_CONFIG = {
       { label: 'Settings',     to: '/settings',    icon: Settings },
     ]},
   ],
-  student: [
+  family: [
     { section: 'Overview', items: [
       { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard },
       { label: 'Announcements', to: '/announcements', icon: Megaphone },
     ]},
-    { section: 'Academic', items: [
-      { label: 'Attendance',   to: '/attendance',  icon: CalendarCheck },
-      { label: 'Timetable',    to: '/timetable',   icon: Clock },
-    ]},
-    { section: 'Finance', items: [
-      { label: 'My Payments',  to: '/my-payments', icon: CreditCard },
-    ]},
-    { section: 'System', items: [
-      { label: 'Settings',     to: '/settings',    icon: Settings },
-    ]},
-  ],
-  parent: [
-    { section: 'Overview', items: [
-      { label: 'Dashboard',     to: '/dashboard',     icon: LayoutDashboard },
-      { label: 'Announcements', to: '/announcements', icon: Megaphone },
-    ]},
-    { section: "Child's Progress", items: [
+    { section: 'Family', items: [
       { label: 'Attendance',   to: '/child-attendance',  icon: CalendarCheck },
       { label: 'Timetable',    to: '/child-timetable',   icon: Clock },
     ]},
@@ -79,16 +63,15 @@ const NAV_CONFIG = {
 }
 
 const ROLE_BADGE = {
-  admin:   'bg-teal-400/20 text-teal-300',
+  admin:   'bg-yellow-400/20 text-yellow-300',
   teacher: 'bg-cyan-400/20 text-cyan-300',
-  student: 'bg-green-400/20 text-green-300',
-  parent:  'bg-purple-400/20 text-purple-300',
+  family:  'bg-purple-400/20 text-purple-300',
 }
 
 function Initials({ name }) {
   const parts = name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
   return (
-    <div className="w-8 h-8 rounded-full bg-teal-400/15 border border-teal-400/30 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-teal-400">
+    <div className="w-8 h-8 rounded-full bg-yellow-400/15 border border-yellow-400/30 flex items-center justify-center flex-shrink-0 text-xs font-semibold text-yellow-400">
       {parts}
     </div>
   )
@@ -100,18 +83,21 @@ export default function Sidebar({ collapsed, onToggle }) {
   const sections = NAV_CONFIG[user.role] || NAV_CONFIG.admin
 
   return (
-    <aside className={`h-screen flex flex-col bg-slate-800 transition-[width] duration-300 ease-in-out flex-shrink-0 ${collapsed ? 'w-[60px]' : 'w-56'}`}>
+    <aside className={`h-screen flex flex-col bg-navy transition-[width] duration-300 ease-in-out flex-shrink-0 ${collapsed ? 'w-[60px]' : 'w-56'}`}>
       {/* Brand */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-white/8 min-h-[68px]">
         {!collapsed && (
-          <div className="overflow-hidden">
-            <p className="font-display text-[17px] text-white whitespace-nowrap">
-              Aca<span className="text-teal-400">demia</span>
-            </p>
-            <p className="text-[9px] text-white/30 uppercase tracking-widest mt-0.5">School Portal</p>
+          <div className="flex items-center gap-2 overflow-hidden">
+            <img src="/XilinLogo.jpg" alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-1 ring-white/15" />
+            <div className="overflow-hidden">
+              <p className="font-display text-[15px] text-white whitespace-nowrap leading-tight">
+                Xilin<span className="text-yellow-400 font-zh"> 希林</span>
+              </p>
+              <p className="text-[9px] text-white/30 uppercase tracking-widest">Chinese School</p>
+            </div>
           </div>
         )}
-        {collapsed && <GraduationCap size={20} className="text-teal-400 mx-auto" />}
+        {collapsed && <img src="/XilinLogo.jpg" alt="Xilin logo" className="w-8 h-8 rounded-full object-cover mx-auto ring-1 ring-white/15" />}
         {!collapsed && (
           <button onClick={onToggle} className="text-white/25 hover:text-white/60 transition-colors ml-2 flex-shrink-0 cursor-pointer">
             <ChevronLeft size={14} />
@@ -145,7 +131,7 @@ export default function Sidebar({ collapsed, onToggle }) {
                     collapsed ? 'px-0 justify-center' : 'px-4'
                   } ${
                     isActive
-                      ? 'text-teal-400 bg-teal-400/8 border-teal-400 font-medium'
+                      ? 'text-yellow-400 bg-yellow-400/8 border-yellow-400 font-medium'
                       : 'text-white/50 border-transparent hover:text-white/80 hover:bg-white/4'
                   }`
                 }
