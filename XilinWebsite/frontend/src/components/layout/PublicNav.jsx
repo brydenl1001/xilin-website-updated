@@ -18,7 +18,7 @@ export default function PublicNav() {
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-2.5">
-          <img src="/XilinLogo.jpg" alt="Xilin Northwest Chinese School logo" className="w-9 h-9 rounded-full object-cover" />
+          <img src="/XilinLogo.png" alt="Xilin Northwest Chinese School logo" className="w-9 h-9 object-contain" />
           <span className="font-display text-xl text-slate-900">Xilin<span className="text-yellow-600 font-zh"> 希林</span></span>
         </Link>
 

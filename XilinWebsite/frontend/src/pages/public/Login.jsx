@@ -33,7 +33,7 @@ export default function Login() {
             <ArrowLeft size={14} /> Back to site
           </Link>
           <div className="flex items-center gap-3">
-            <img src="/XilinLogo.jpg" alt="Xilin Northwest Chinese School logo" className="w-12 h-12 rounded-full object-cover ring-1 ring-white/15" />
+            <img src="/XilinLogo.png" alt="Xilin Northwest Chinese School logo" className="w-12 h-12 object-contain" />
             <div>
               <p className="font-display text-2xl text-white leading-tight">Xilin<span className="text-yellow-400 font-zh"> 希林</span></p>
               <p className="text-slate-400 text-xs uppercase tracking-widest mt-0.5">School Portal</p>
@@ -61,7 +61,7 @@ export default function Login() {
               <ArrowLeft size={14} /> Back to site
             </Link>
             <div className="flex items-center gap-2.5">
-              <img src="/XilinLogo.jpg" alt="" className="w-9 h-9 rounded-full object-cover" />
+              <img src="/XilinLogo.png" alt="" className="w-9 h-9 object-contain" />
               <p className="font-display text-2xl text-slate-900">Xilin<span className="text-yellow-600 font-zh"> 希林</span></p>
             </div>
           </div>

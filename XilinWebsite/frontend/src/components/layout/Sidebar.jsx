@@ -88,7 +88,7 @@ export default function Sidebar({ collapsed, onToggle }) {
       <div className="flex items-center justify-between px-4 py-5 border-b border-white/8 min-h-[68px]">
         {!collapsed && (
           <div className="flex items-center gap-2 overflow-hidden">
-            <img src="/XilinLogo.jpg" alt="" className="w-8 h-8 rounded-full object-cover flex-shrink-0 ring-1 ring-white/15" />
+            <img src="/XilinLogo.png" alt="" className="w-8 h-8 object-contain flex-shrink-0" />
             <div className="overflow-hidden">
               <p className="font-display text-[15px] text-white whitespace-nowrap leading-tight">
                 Xilin<span className="text-yellow-400 font-zh"> 希林</span>
@@ -97,7 +97,7 @@ export default function Sidebar({ collapsed, onToggle }) {
             </div>
           </div>
         )}
-        {collapsed && <img src="/XilinLogo.jpg" alt="Xilin logo" className="w-8 h-8 rounded-full object-cover mx-auto ring-1 ring-white/15" />}
+        {collapsed && <img src="/XilinLogo.png" alt="Xilin logo" className="w-8 h-8 object-contain mx-auto" />}
         {!collapsed && (
           <button onClick={onToggle} className="text-white/25 hover:text-white/60 transition-colors ml-2 flex-shrink-0 cursor-pointer">
             <ChevronLeft size={14} />

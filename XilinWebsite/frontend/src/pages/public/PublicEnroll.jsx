@@ -48,7 +48,13 @@ export default function PublicEnroll() {
     class_ids: [],
     notes: '',
   })
-  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+  const [errors, setErrors] = useState({})
+  // Update a field and clear its validation error as the user types.
+  const set = (k) => (e) => {
+    const value = e.target.value
+    setForm(f => ({ ...f, [k]: value }))
+    setErrors(er => (er[k] ? { ...er, [k]: undefined } : er))
+  }
 
   useEffect(() => {
     listPublicCourses()
@@ -86,15 +92,41 @@ export default function PublicEnroll() {
     setSubmitted(false)
     setStep(0)
     setReference('')
+    setErrors({})
     setForm({
       applicant_type: 'parent', full_name: '', email: '', phone: '', dob: '',
       family_mode: 'new', family_id: '', family_name: '', class_ids: [], notes: '',
     })
   }
 
-  // Step gating
-  const step0Valid = form.full_name && form.email
-  const step1Valid = form.family_mode === 'existing' ? form.family_id.trim() : form.family_name.trim()
+  // Per-step validation — runs when the user clicks "Continue".
+  const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+  const validateStep = (s) => {
+    const e = {}
+    if (s === 0) {
+      if (!form.full_name.trim()) e.full_name = 'Please enter your full name.'
+      if (!form.email.trim()) e.email = 'Please enter your email address.'
+      else if (!EMAIL_RE.test(form.email.trim())) e.email = 'Please enter a valid email address.'
+    }
+    if (s === 1) {
+      if (form.family_mode === 'existing') {
+        if (!form.family_id.trim()) e.family_id = 'Please enter the Family ID.'
+        else if (!UUID_RE.test(form.family_id.trim())) e.family_id = "That doesn't look like a valid Family ID."
+      } else if (!form.family_name.trim()) {
+        e.family_name = 'Please enter a family name.'
+      }
+    }
+    return e
+  }
+
+  const goNext = () => {
+    const e = validateStep(step)
+    if (Object.keys(e).length) { setErrors(e); return }
+    setErrors({})
+    setStep(s => s + 1)
+  }
 
   const selectedCourses = courses.filter(c => form.class_ids.includes(c.id))
 
@@ -160,8 +192,8 @@ export default function PublicEnroll() {
                 ))}
               </div>
             </div>
-            <Input label="Full Name" id="fname" placeholder="e.g. Maria Adeyemi" value={form.full_name} onChange={set('full_name')} required />
-            <Input label="Email Address" id="email" type="email" placeholder="you@email.com" value={form.email} onChange={set('email')} required />
+            <Input label="Full Name" id="fname" placeholder="e.g. Maria Adeyemi" value={form.full_name} onChange={set('full_name')} required error={errors.full_name} />
+            <Input label="Email Address" id="email" type="email" placeholder="you@email.com" value={form.email} onChange={set('email')} required error={errors.email} />
             <Input label="Phone Number" id="phone" type="tel" placeholder="(312) 000-0000" value={form.phone} onChange={set('phone')} />
             {form.applicant_type === 'student' && (
               <Input label="Date of Birth" id="dob" type="date" value={form.dob} onChange={set('dob')} />
@@ -203,6 +235,7 @@ export default function PublicEnroll() {
                   value={form.family_id}
                   onChange={set('family_id')}
                   required
+                  error={errors.family_id}
                 />
                 <p className="text-xs text-slate-400 mt-1.5">
                   Ask the primary contact of your family for the Family ID shown in their portal settings.
@@ -218,6 +251,7 @@ export default function PublicEnroll() {
                   value={form.family_name}
                   onChange={set('family_name')}
                   required
+                  error={errors.family_name}
                 />
                 <p className="text-xs text-slate-400 mt-1.5">
                   A new family account will be created for you once an admin approves this application.
@@ -310,11 +344,7 @@ export default function PublicEnroll() {
             Back
           </Button>
           {step < STEPS.length - 1 ? (
-            <Button
-              variant="gold"
-              onClick={() => setStep(s => s + 1)}
-              disabled={(step === 0 && !step0Valid) || (step === 1 && !step1Valid)}
-            >
+            <Button variant="gold" onClick={goNext} disabled={submitting}>
               Continue <ArrowRight size={14} />
             </Button>
           ) : (

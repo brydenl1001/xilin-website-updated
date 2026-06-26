@@ -1,4 +1,5 @@
 import { X, Search, ArrowUp, ArrowDown } from 'lucide-react'
+import { createPortal } from 'react-dom'
 
 // ─── ListToolbar (search + sort) ───────────────────────────────────────────────
 export function ListToolbar({ query, onQuery, placeholder = 'Search...', sortOptions = [], sortKey, onSortKey, sortDir, onToggleDir, right }) {
@@ -109,12 +110,12 @@ export function StatCard({ label, value, delta, trend, Icon }) {
 }
 
 // ─── Input ────────────────────────────────────────────────────────────────────
-export function Input({ label, id, type = 'text', placeholder, value, onChange, required, className = '' }) {
+export function Input({ label, id, type = 'text', placeholder, value, onChange, required, error, className = '' }) {
   return (
     <div className={className}>
       {label && (
         <label htmlFor={id} className="block text-xs font-medium text-slate-600 mb-1.5">
-          {label}
+          {label}{required && <span className="text-red-400"> *</span>}
         </label>
       )}
       <input
@@ -124,8 +125,14 @@ export function Input({ label, id, type = 'text', placeholder, value, onChange, 
         value={value}
         onChange={onChange}
         required={required}
-        className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100 transition-all placeholder:text-slate-300"
+        aria-invalid={!!error}
+        className={`w-full px-3 py-2 text-sm bg-white border rounded-lg outline-none transition-all placeholder:text-slate-300 ${
+          error
+            ? 'border-red-400 focus:border-red-500 focus:ring-2 focus:ring-red-100'
+            : 'border-slate-200 focus:border-yellow-500 focus:ring-2 focus:ring-yellow-100'
+        }`}
       />
+      {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
     </div>
   )
 }
@@ -175,11 +182,14 @@ export function Textarea({ label, id, placeholder, value, onChange, rows = 4, cl
 // ─── Modal ────────────────────────────────────────────────────────────────────
 export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }) {
   if (!open) return null
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" />
+  // Rendered via a portal to <body> so the fixed overlay covers the whole
+  // viewport — otherwise a transformed ancestor (e.g. animate-fade-in pages)
+  // would trap the backdrop inside the page's box.
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
+      <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" />
       <div
-        className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} p-6 animate-fade-in`}
+        className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} p-6 my-8 animate-fade-in`}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-5">
@@ -190,7 +200,8 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' })
         </div>
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
