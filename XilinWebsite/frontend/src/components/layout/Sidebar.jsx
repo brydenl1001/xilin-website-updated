@@ -1,8 +1,8 @@
 import { NavLink } from 'react-router-dom'
 import {
-  LayoutDashboard, Megaphone, BookOpen, CalendarCheck, Clock,
+  LayoutDashboard, Megaphone, BookOpen, Clock,
   Home, CreditCard, Users, Settings, LogOut, GraduationCap,
-  ChevronLeft, ChevronRight, Globe, Inbox
+  ChevronLeft, ChevronRight, Globe, Inbox, BarChart3
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -15,16 +15,16 @@ const NAV_CONFIG = {
     { section: 'Catalog', items: [
       { label: 'Courses',      to: '/courses',        icon: BookOpen },
       { label: 'Classes',      to: '/manage-classes', icon: GraduationCap },
+      { label: 'Semesters',    to: '/semesters',      icon: Clock },
     ]},
     { section: 'Academic', items: [
-      { label: 'Attendance',   to: '/attendance', icon: CalendarCheck },
       { label: 'Timetable',    to: '/timetable',  icon: Clock },
     ]},
     { section: 'Management', items: [
       { label: 'Applications', to: '/applications', icon: Inbox },
       { label: 'Families',     to: '/families',     icon: Home },
       { label: 'Users',        to: '/users',        icon: Users },
-      { label: 'Payments',     to: '/payments',     icon: CreditCard },
+      { label: 'Reports',      to: '/reports',      icon: BarChart3 },
     ]},
     { section: 'System', items: [
       { label: 'Settings',     to: '/settings',    icon: Settings },
@@ -37,7 +37,6 @@ const NAV_CONFIG = {
     ]},
     { section: 'Academic', items: [
       { label: 'My Classes',   to: '/my-classes',  icon: BookOpen },
-      { label: 'Attendance',   to: '/attendance',  icon: CalendarCheck },
       { label: 'Timetable',    to: '/timetable',   icon: Clock },
     ]},
     { section: 'System', items: [
@@ -50,7 +49,6 @@ const NAV_CONFIG = {
       { label: 'Announcements', to: '/announcements', icon: Megaphone },
     ]},
     { section: 'Family', items: [
-      { label: 'Attendance',   to: '/child-attendance',  icon: CalendarCheck },
       { label: 'Timetable',    to: '/child-timetable',   icon: Clock },
     ]},
     { section: 'Finance', items: [

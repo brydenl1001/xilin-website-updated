@@ -13,3 +13,12 @@ export const schoolInfo = {
   // NOTE: The public site did not list a physical address, phone number, or
   // founding year — fill these in here when you have the official details.
 }
+
+// Placeholder board/leadership for the public About page — replace names, roles,
+// bios (and add photo URLs in /public) with the school's real leadership.
+export const boardMembers = [
+  { name: 'President Name', role: 'President', bio: 'A short bio about the school president — their background and vision for Xilin.' },
+  { name: 'Vice President', role: 'Vice President', bio: 'A short bio for this board member.' },
+  { name: 'Board Member', role: 'Treasurer', bio: 'A short bio for this board member.' },
+  { name: 'Board Member', role: 'Secretary', bio: 'A short bio for this board member.' },
+]

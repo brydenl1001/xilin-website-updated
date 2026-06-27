@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2 } from 'lucide-react'
-import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement } from '../../lib/supabaseClient'
+import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters } from '../../lib/supabaseClient'
 import { Badge, Button, Modal, Input, Select, Textarea, PageHeader, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { useAuth } from '../../context/AuthContext'
@@ -12,7 +12,7 @@ const SORT_OPTIONS = [
   { key: 'title', label: 'Title' },
   { key: 'category', label: 'Category' },
 ]
-const BLANK = { title: '', body: '', category: 'general', is_public: 'false' }
+const BLANK = { title: '', body: '', category: 'general', is_public: 'false', semester_id: '', media_url: '' }
 
 export default function Announcements() {
   const { user } = useAuth()
@@ -22,12 +22,13 @@ export default function Announcements() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('all')
-  const [expanded, setExpanded] = useState(null)
+  const [viewing, setViewing] = useState(null)
   const [showModal, setShowModal] = useState(false)
   const [editingId, setEditingId] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [deletingId, setDeletingId] = useState(null)
   const [form, setForm] = useState(BLANK)
+  const [semesters, setSemesters] = useState([])
 
   const load = () => {
     setLoading(true)
@@ -36,7 +37,8 @@ export default function Announcements() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
   }
-  useEffect(() => { load() }, [])
+  useEffect(() => { load(); listSemesters().then(setSemesters).catch(() => {}) }, [])
+  const semesterName = (id) => semesters.find(s => s.id === id)?.name
 
   const catFiltered = filter === 'all' ? announcements : announcements.filter(a => a.category === filter)
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
@@ -44,7 +46,7 @@ export default function Announcements() {
 
   const openNew = () => { setForm(BLANK); setEditingId(null); setShowModal(true) }
   const openEdit = (ann) => {
-    setForm({ title: ann.title, body: ann.body, category: ann.category, is_public: ann.is_public ? 'true' : 'false' })
+    setForm({ title: ann.title, body: ann.body, category: ann.category, is_public: ann.is_public ? 'true' : 'false', semester_id: ann.semester_id || '', media_url: ann.media_url || '' })
     setEditingId(ann.id); setShowModal(true)
   }
   const setField = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
@@ -53,7 +55,7 @@ export default function Announcements() {
     if (!form.title || !form.body) return
     setSubmitting(true)
     try {
-      const payload = { title: form.title, body: form.body, category: form.category, is_public: form.is_public === 'true' }
+      const payload = { title: form.title, body: form.body, category: form.category, is_public: form.is_public === 'true', semester_id: form.semester_id || null, media_url: form.media_url.trim() || null }
       if (editingId) await updateAnnouncement(editingId, payload)
       else await createAnnouncement({ ...payload, author_id: user.id })
       setShowModal(false); setForm(BLANK); setEditingId(null)
@@ -102,8 +104,8 @@ export default function Announcements() {
         {loading && <p className="text-center text-slate-400 py-12 text-sm">Loading…</p>}
         {error && <p className="text-center text-red-500 py-12 text-sm">Failed to load: {error}</p>}
         {!loading && !error && filtered.map(ann => (
-          <div key={ann.id} onClick={() => setExpanded(expanded === ann.id ? null : ann.id)}
-            className={`bg-white border-l-4 border border-slate-200 rounded-xl p-5 cursor-pointer hover:border-slate-300 transition-all ${BORDER[ann.category]}`}>
+          <div key={ann.id} onClick={() => setViewing(ann)}
+            className={`bg-white border-l-4 border border-slate-200 rounded-xl p-4 cursor-pointer hover:border-slate-300 transition-all ${BORDER[ann.category]}`}>
             <div className="flex items-start justify-between gap-3 mb-1">
               <h3 className="font-display text-[15px] text-slate-900 leading-snug">{ann.title}</h3>
               <div className="flex items-center gap-2 flex-shrink-0">
@@ -123,15 +125,28 @@ export default function Announcements() {
                 )}
               </div>
             </div>
-            <p className="text-xs text-slate-400 mb-2">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
-            {expanded === ann.id && (
-              <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3 mt-2 animate-fade-in">{ann.body}</p>
-            )}
-            <p className="text-xs text-yellow-600 mt-1">{expanded === ann.id ? 'Show less' : 'Read more'}</p>
+            <p className="text-xs text-slate-400">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
+            <p className="text-sm text-slate-500 line-clamp-1 mt-1">{ann.body}</p>
           </div>
         ))}
         {!loading && !error && filtered.length === 0 && <p className="text-center text-slate-400 py-12 text-sm">No announcements found.</p>}
       </div>
+
+      {/* View popup */}
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.title || 'Announcement'}>
+        {viewing && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2">
+              {!viewing.is_public && <Badge variant="default">Internal</Badge>}
+              <Badge variant={viewing.category}>{viewing.category}</Badge>
+              <span className="text-xs text-slate-400">{viewing.profiles?.full_name || 'School Office'} · {viewing.published_at?.slice(0, 10)}</span>
+            </div>
+            {viewing.media_url && <img src={viewing.media_url} alt="" className="rounded-lg max-h-72 w-full object-cover border border-slate-100" />}
+            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{viewing.body}</p>
+            {semesterName(viewing.semester_id) && <p className="text-xs text-slate-400">Semester: {semesterName(viewing.semester_id)}</p>}
+          </div>
+        )}
+      </Modal>
 
       <Modal open={showModal} onClose={() => !submitting && setShowModal(false)} title={editingId ? 'Edit Announcement' : 'New Announcement'}>
         <div className="space-y-4">
@@ -145,6 +160,13 @@ export default function Announcements() {
               <option value="true">Public</option>
               <option value="false">Internal Only</option>
             </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Semester (optional)" id="asem" value={form.semester_id} onChange={setField('semester_id')}>
+              <option value="">All / none</option>
+              {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </Select>
+            <Input label="Image URL (optional)" id="amedia" placeholder="https://…" value={form.media_url} onChange={setField('media_url')} />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowModal(false)} disabled={submitting}>Cancel</Button>

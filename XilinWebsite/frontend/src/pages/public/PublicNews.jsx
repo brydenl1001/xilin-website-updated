@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { listPublicAnnouncements } from '../../lib/supabaseClient'
-import { Lock } from 'lucide-react'
+import { Lock, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 
 const CATS = ['all', 'events', 'academics', 'general', 'urgent']
@@ -9,7 +9,7 @@ const CAT_BADGE = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-1
 
 export default function PublicNews() {
   const [filter, setFilter] = useState('all')
-  const [expanded, setExpanded] = useState(null)
+  const [selected, setSelected] = useState(null)
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -65,7 +65,7 @@ export default function PublicNews() {
         {filtered.map(ann => (
           <div
             key={ann.id}
-            onClick={() => setExpanded(expanded === ann.id ? null : ann.id)}
+            onClick={() => setSelected(ann)}
             className={`bg-white border-l-4 border border-slate-200 rounded-xl p-5 cursor-pointer hover:border-slate-300 transition-all ${CAT_BG[ann.category]}`}
           >
             <div className="flex items-start justify-between gap-3 mb-1">
@@ -74,16 +74,26 @@ export default function PublicNews() {
                 {ann.category}
               </span>
             </div>
-            <p className="text-xs text-slate-400 mb-3">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
-            {expanded === ann.id && (
-              <p className="text-sm text-slate-600 leading-relaxed border-t border-slate-100 pt-3 animate-fade-in">
-                {ann.body}
-              </p>
-            )}
-            <p className="text-xs text-yellow-600 mt-1">{expanded === ann.id ? 'Show less ↑' : 'Read more ↓'}</p>
+            <p className="text-xs text-slate-400">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
+            <p className="text-sm text-slate-500 line-clamp-1 mt-1">{ann.body}</p>
           </div>
         ))}
       </div>
+
+      {/* Announcement popup */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
+          <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+            <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-slate-300 hover:text-slate-600 cursor-pointer"><X size={18} /></button>
+            <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full capitalize ${CAT_BADGE[selected.category]}`}>{selected.category}</span>
+            <h2 className="font-display text-2xl text-slate-900 mt-3 mb-1">{selected.title}</h2>
+            <p className="text-xs text-slate-400 mb-4">{selected.profiles?.full_name || 'School Office'} · {selected.published_at?.slice(0, 10)}</p>
+            {selected.media_url && <img src={selected.media_url} alt="" className="rounded-lg mb-4 max-h-72 w-full object-cover border border-slate-100" />}
+            <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{selected.body}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

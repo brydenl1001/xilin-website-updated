@@ -5,8 +5,9 @@ import { Button } from '../ui'
 
 const NAV_LINKS = [
   { label: 'Home',          to: '/' },
-  { label: 'Announcements', to: '/news' },
+  { label: 'About',         to: '/about' },
   { label: 'Classes',       to: '/classes' },
+  { label: 'Announcements', to: '/news' },
   { label: 'Enroll',        to: '/enroll' },
 ]
 

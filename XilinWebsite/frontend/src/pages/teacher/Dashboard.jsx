@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BookOpen, CalendarCheck, Megaphone } from 'lucide-react'
+import { BookOpen, Megaphone } from 'lucide-react'
 import { listMyClasses, listAnnouncements } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'

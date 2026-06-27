@@ -45,6 +45,7 @@ export default function PublicEnroll() {
     full_name: '', email: '', phone: '', dob: '',
     family_mode: 'new',         // 'new' | 'existing'
     family_id: '', family_name: '',
+    password: '', password_confirm: '',
     class_ids: [],
     notes: '',
   })
@@ -95,7 +96,7 @@ export default function PublicEnroll() {
     setErrors({})
     setForm({
       applicant_type: 'parent', full_name: '', email: '', phone: '', dob: '',
-      family_mode: 'new', family_id: '', family_name: '', class_ids: [], notes: '',
+      family_mode: 'new', family_id: '', family_name: '', password: '', password_confirm: '', class_ids: [], notes: '',
     })
   }
 
@@ -114,8 +115,10 @@ export default function PublicEnroll() {
       if (form.family_mode === 'existing') {
         if (!form.family_id.trim()) e.family_id = 'Please enter the Family ID.'
         else if (!UUID_RE.test(form.family_id.trim())) e.family_id = "That doesn't look like a valid Family ID."
-      } else if (!form.family_name.trim()) {
-        e.family_name = 'Please enter a family name.'
+      } else {
+        if (!form.family_name.trim()) e.family_name = 'Please enter a family name.'
+        if (form.password.length < 8) e.password = 'Choose a password of at least 8 characters.'
+        else if (form.password !== form.password_confirm) e.password_confirm = 'Passwords do not match.'
       }
     }
     return e
@@ -253,8 +256,12 @@ export default function PublicEnroll() {
                   required
                   error={errors.family_name}
                 />
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <Input label="Choose a Password" id="password" type="password" placeholder="At least 8 characters" value={form.password} onChange={set('password')} required error={errors.password} />
+                  <Input label="Confirm Password" id="password_confirm" type="password" placeholder="Re-enter password" value={form.password_confirm} onChange={set('password_confirm')} required error={errors.password_confirm} />
+                </div>
                 <p className="text-xs text-slate-400 mt-1.5">
-                  A new family account will be created for you once an admin approves this application.
+                  You'll sign in with your <strong>4-digit Family ID</strong> and this password once an admin approves your application.
                 </p>
               </div>
             )}

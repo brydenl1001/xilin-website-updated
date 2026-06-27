@@ -1,20 +1,29 @@
 import { useState, useEffect } from 'react'
-import { ArrowLeft, Plus, X, Mail, Phone, Users, BookOpen, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Plus, X, Mail, Phone, Users, BookOpen, Pencil, Trash2, Wallet, Hash } from 'lucide-react'
 import {
-  listFamilies, listClasses, getOwnEnrollments, getOwnPayments,
-  createEnrollment, deleteEnrollment, createAccount,
+  listFamilies, listClasses, getOwnEnrollments, listBalanceTransactions,
+  enrollMember, dropMember, recordPayment, createAccount, getClassCounts,
   updateFamilyMember, removeFamilyMemberFully,
 } from '../../lib/supabaseClient'
-import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar } from '../../components/ui'
+
+// Two classes conflict if same day with overlapping time windows.
+const timesOverlap = (a, b) =>
+  a?.day_of_week && a.day_of_week === b?.day_of_week &&
+  a.start_time && a.end_time && b.start_time && b.end_time &&
+  a.start_time < b.end_time && b.start_time < a.end_time
+import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 
 const ROLE_VARIANT = { parent: 'gold', student: 'success', guardian: 'navy' }
+const METHOD_LABEL = { enrollment: 'Enrollment', drop_credit: 'Drop credit', cash: 'Cash payment', online: 'Online payment', adjustment: 'Adjustment' }
 const SORT_OPTIONS = [
   { key: 'family_name', label: 'Family name' },
+  { key: 'balance', label: 'Balance (who owes)' },
+  { key: 'family_code', label: 'Family ID' },
   { key: 'created_at', label: 'Created' },
 ]
 const fmtTime = (t) => t ? t.slice(0, 5) : ''
-const money = (n) => `$${Number(n || 0).toLocaleString()}`
+const money = (n) => `${Number(n) < 0 ? '-' : ''}$${Math.abs(Number(n || 0)).toFixed(2)}`
 
 export default function AdminFamilies() {
   const [families, setFamilies] = useState([])
@@ -23,12 +32,14 @@ export default function AdminFamilies() {
   const [error, setError] = useState('')
   const [selectedId, setSelectedId] = useState(null)
 
+  const [counts, setCounts] = useState({})
   const load = async () => {
     setLoading(true)
     try {
-      const [fams, cls] = await Promise.all([listFamilies(), listClasses()])
+      const [fams, cls, cnt] = await Promise.all([listFamilies(), listClasses(), getClassCounts()])
       setFamilies(fams)
       setClasses(cls)
+      setCounts(cnt)
     } catch (e) {
       setError(e.message)
     } finally {
@@ -38,19 +49,26 @@ export default function AdminFamilies() {
   useEffect(() => { load() }, [])
 
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
-    useListControls(families, { searchKeys: ['family_name', 'email'], sortOptions: SORT_OPTIONS })
+    useListControls(families, { searchKeys: ['family_name', 'email', 'family_code'], sortOptions: SORT_OPTIONS })
 
   const selected = families.find(f => f.id === selectedId)
-
   if (selected) {
-    return <FamilyDetail family={selected} classes={classes} onBack={() => setSelectedId(null)} onChanged={load} />
+    return <FamilyDetail family={selected} classes={classes} counts={counts} onBack={() => setSelectedId(null)} onChanged={load} />
   }
+
+  const owingCount = families.filter(f => Number(f.balance) < 0).length
 
   return (
     <div className="max-w-5xl animate-fade-in">
-      <PageHeader title="Families" subtitle="View households, members, classes, and payments" />
+      <PageHeader title="Families" subtitle="Households, members, classes, and balances" />
 
-      <ListToolbar query={query} onQuery={setQuery} placeholder="Search families..."
+      {owingCount > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5 mb-4 text-sm text-amber-800">
+          {owingCount} famil{owingCount === 1 ? 'y has' : 'ies have'} an outstanding balance. Sort by “Balance (who owes)” to review.
+        </div>
+      )}
+
+      <ListToolbar query={query} onQuery={setQuery} placeholder="Search name, email, or Family ID..."
         sortOptions={SORT_OPTIONS} sortKey={sortKey} onSortKey={setSortKey} sortDir={sortDir} onToggleDir={toggleDir} />
 
       <Card className="!p-0 overflow-hidden">
@@ -59,18 +77,24 @@ export default function AdminFamilies() {
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
-          <Table headers={['Family', 'Members', 'Email', 'Phone', '']}>
+          <Table headers={['Family', 'ID', 'Members', 'Balance', '']}>
             {filtered.length === 0 ? (
               <Tr><Td className="py-12 text-center text-slate-400">No families yet.</Td></Tr>
-            ) : filtered.map(f => (
-              <Tr key={f.id} onClick={() => setSelectedId(f.id)}>
-                <Td><span className="font-medium text-slate-900">{f.family_name}</span></Td>
-                <Td className="text-slate-600">{f.family_members?.length || 0}</Td>
-                <Td className="text-slate-500 text-xs">{f.email}</Td>
-                <Td className="text-slate-500 text-xs">{f.phone || '—'}</Td>
-                <Td><span className="text-xs text-yellow-600">Manage →</span></Td>
-              </Tr>
-            ))}
+            ) : filtered.map(f => {
+              const owes = Number(f.balance) < 0
+              return (
+                <Tr key={f.id} onClick={() => setSelectedId(f.id)}>
+                  <Td>
+                    <p className="font-medium text-slate-900">{f.family_name}</p>
+                    <p className="text-xs text-slate-400">{f.email}</p>
+                  </Td>
+                  <Td><span className="font-mono text-xs text-slate-500">{f.family_code || '—'}</span></Td>
+                  <Td className="text-slate-600">{f.family_members?.length || 0}</Td>
+                  <Td><span className={`font-medium ${owes ? 'text-red-600' : 'text-slate-700'}`}>{money(f.balance)}{owes && ' owed'}</span></Td>
+                  <Td><span className="text-xs text-yellow-600">Manage →</span></Td>
+                </Tr>
+              )
+            })}
           </Table>
         )}
       </Card>
@@ -79,10 +103,10 @@ export default function AdminFamilies() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-function FamilyDetail({ family, classes, onBack, onChanged }) {
+function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   const members = (family.family_members || []).map(m => ({ ...m.profiles, relationship: m.relationship }))
   const [enrollByMember, setEnrollByMember] = useState({})
-  const [payByMember, setPayByMember] = useState({})
+  const [ledger, setLedger] = useState([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
@@ -91,18 +115,24 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
   const [editMember, setEditMember] = useState(null)
   const [editForm, setEditForm] = useState({ full_name: '', role: 'student' })
   const [editError, setEditError] = useState('')
+  const [payOpen, setPayOpen] = useState(false)
+  const [payForm, setPayForm] = useState({ amount: '', note: '' })
+  const [payError, setPayError] = useState('')
 
-  const loadMemberData = async () => {
+  const balance = Number(family.balance || 0)
+  const owes = balance < 0
+
+  const reload = async () => {
     setLoading(true)
     try {
-      const entries = await Promise.all(members.map(async (m) => {
-        const [enr, pay] = await Promise.all([getOwnEnrollments(m.id), getOwnPayments(m.id)])
-        return [m.id, enr, pay]
-      }))
-      const e = {}, p = {}
-      entries.forEach(([id, enr, pay]) => { e[id] = enr; p[id] = pay })
+      const [entries, txns] = await Promise.all([
+        Promise.all(members.map(async (m) => [m.id, await getOwnEnrollments(m.id)])),
+        listBalanceTransactions(family.id),
+      ])
+      const e = {}
+      entries.forEach(([id, enr]) => { e[id] = enr })
       setEnrollByMember(e)
-      setPayByMember(p)
+      setLedger(txns)
     } catch (err) {
       console.error(err)
     } finally {
@@ -110,29 +140,58 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
     }
   }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { loadMemberData() }, [family.id, family.family_members?.length])
+  useEffect(() => { reload() }, [family.id, family.family_members?.length])
+
+  // After any balance-affecting op: refresh the families list (header balance) + local data.
+  const refreshAll = async () => { await onChanged(); await reload() }
 
   const addClass = async (memberId, classId) => {
     if (!classId) return
+    // Schedule-conflict warning (non-blocking).
+    const target = classes.find(c => c.id === classId)
+    const conflict = (enrollByMember[memberId] || [])
+      .filter(e => e.status === 'enrolled')
+      .map(e => e.classes)
+      .find(ec => timesOverlap(ec, target))
+    if (conflict && !window.confirm(
+      `Heads up: this overlaps with "${conflict.name}" (${conflict.day_of_week} ${(conflict.start_time || '').slice(0,5)}). Enroll anyway?`
+    )) return
+
     setBusy(true)
     try {
-      await createEnrollment(memberId, classId)
-      const enr = await getOwnEnrollments(memberId)
-      setEnrollByMember(prev => ({ ...prev, [memberId]: enr }))
+      await enrollMember(memberId, classId)
+      await refreshAll()
     } catch (err) {
-      alert(`Could not add class: ${err.message}`)
+      alert(err.message)
     } finally {
       setBusy(false)
     }
   }
 
-  const removeClass = async (memberId, enrollmentId) => {
+  const removeClass = async (memberId, enrollmentId, className) => {
+    if (!window.confirm(`Drop "${className}"? Any prorated credit will be returned to the family balance.`)) return
     setBusy(true)
     try {
-      await deleteEnrollment(enrollmentId)
-      setEnrollByMember(prev => ({ ...prev, [memberId]: (prev[memberId] || []).filter(e => e.id !== enrollmentId) }))
+      const res = await dropMember(enrollmentId)
+      await refreshAll()
+      alert(`Dropped. Credit returned: ${money(res.credit)}.`)
     } catch (err) {
-      alert(`Could not remove class: ${err.message}`)
+      alert(err.message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const submitPayment = async () => {
+    const amt = Number(payForm.amount)
+    if (!amt || amt <= 0) { setPayError('Enter a positive amount.'); return }
+    setBusy(true); setPayError('')
+    try {
+      await recordPayment(family.id, amt, 'cash', payForm.note.trim() || 'Cash payment at front office')
+      setPayOpen(false); setPayForm({ amount: '', note: '' })
+      await refreshAll()
+    } catch (err) {
+      setPayError(err.message)
     } finally {
       setBusy(false)
     }
@@ -144,7 +203,7 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
     try {
       await createAccount({ kind: 'member', full_name: addForm.full_name.trim(), role: addForm.role, family_id: family.id })
       setAddOpen(false); setAddForm({ full_name: '', role: 'student' })
-      await onChanged() // reload families so the new member shows
+      await onChanged()
     } catch (err) {
       setAddError(err.message)
     } finally {
@@ -171,11 +230,11 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
     }
   }
   const removeMember = async (m) => {
-    if (!window.confirm(`Remove ${m.full_name} from this family? Their classes and member record will be permanently deleted.`)) return
+    if (!window.confirm(`Remove ${m.full_name} from this family? Their enrollments and member record will be permanently deleted.`)) return
     setBusy(true)
     try {
       await removeFamilyMemberFully(family.id, m.id)
-      await onChanged()
+      await refreshAll()
     } catch (err) {
       alert(`Could not remove member: ${err.message}`)
     } finally {
@@ -183,10 +242,7 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
     }
   }
 
-  const allPayments = Object.values(payByMember).flat()
-  const owed = allPayments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount), 0)
-  const paid = allPayments.filter(p => p.status === 'paid').reduce((s, p) => s + Number(p.amount), 0)
-  const enrolledClassIds = (memberId) => new Set((enrollByMember[memberId] || []).map(e => e.class_id))
+  const enrolledClassIds = (memberId) => new Set((enrollByMember[memberId] || []).filter(e => e.status === 'enrolled').map(e => e.class_id))
 
   return (
     <div className="max-w-4xl animate-fade-in">
@@ -196,13 +252,22 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
 
       {/* Family header */}
       <div className="bg-navy rounded-2xl p-6 mb-5 text-white">
-        <p className="font-display text-2xl mb-2">{family.family_name}</p>
-        <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-300">
-          <span className="flex items-center gap-1.5"><Mail size={13} className="text-yellow-400" />{family.email}</span>
-          {family.phone && <span className="flex items-center gap-1.5"><Phone size={13} className="text-yellow-400" />{family.phone}</span>}
-          <span className="flex items-center gap-1.5"><Users size={13} className="text-yellow-400" />{members.length} member{members.length !== 1 ? 's' : ''}</span>
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="font-display text-2xl mb-2">{family.family_name}</p>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-300">
+              <span className="flex items-center gap-1.5"><Hash size={13} className="text-yellow-400" />ID {family.family_code || '—'}</span>
+              <span className="flex items-center gap-1.5"><Mail size={13} className="text-yellow-400" />{family.email}</span>
+              {family.phone && <span className="flex items-center gap-1.5"><Phone size={13} className="text-yellow-400" />{family.phone}</span>}
+              <span className="flex items-center gap-1.5"><Users size={13} className="text-yellow-400" />{members.length} member{members.length !== 1 ? 's' : ''}</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[11px] uppercase tracking-widest text-white/40 mb-0.5">{owes ? 'Outstanding Balance' : 'Account Balance'}</p>
+            <p className={`font-display text-3xl ${owes ? 'text-red-300' : 'text-yellow-400'}`}>{money(balance)}</p>
+            <Button size="sm" variant="gold" className="mt-2" onClick={() => { setPayOpen(true); setPayError('') }}><Wallet size={13} /> Record Payment</Button>
+          </div>
         </div>
-        <p className="text-[11px] text-white/40 mt-3">Family ID: <span className="font-mono">{family.id}</span></p>
       </div>
 
       {/* Members + their classes */}
@@ -216,7 +281,7 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
       ) : (
         <div className="space-y-3 mb-6">
           {members.map(m => {
-            const enrolled = enrollByMember[m.id] || []
+            const enrolled = (enrollByMember[m.id] || []).filter(e => e.status === 'enrolled')
             const taken = enrolledClassIds(m.id)
             const available = classes.filter(c => !taken.has(c.id))
             return (
@@ -248,9 +313,9 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
                           <span key={e.id} className="inline-flex items-center gap-1.5 text-xs bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-full pl-3 pr-1.5 py-1">
                             <BookOpen size={11} />
                             {e.classes?.name || e.classes?.courses?.name || 'Class'}
-                            {e.classes?.start_time && <span className="text-yellow-500">Sun {fmtTime(e.classes.start_time)}</span>}
-                            <button onClick={() => removeClass(m.id, e.id)} disabled={busy}
-                              className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-yellow-200 cursor-pointer disabled:opacity-40" title="Remove">
+                            {e.price_charged != null && <span className="text-yellow-600">{money(e.price_charged)}</span>}
+                            <button onClick={() => removeClass(m.id, e.id, e.classes?.name || 'class')} disabled={busy}
+                              className="ml-0.5 w-4 h-4 flex items-center justify-center rounded-full hover:bg-yellow-200 cursor-pointer disabled:opacity-40" title="Drop class">
                               <X size={11} />
                             </button>
                           </span>
@@ -258,18 +323,19 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
                       </div>
                     ) : <p className="text-xs text-slate-400 mb-3">Not enrolled in any classes.</p>}
 
-                    <div className="flex items-center gap-2">
-                      <select disabled={busy || available.length === 0} defaultValue=""
-                        onChange={e => { addClass(m.id, e.target.value); e.target.value = '' }}
-                        className="text-xs border border-slate-200 rounded-lg px-2 h-8 bg-white outline-none text-slate-600 cursor-pointer disabled:opacity-50 max-w-[260px]">
-                        <option value="" disabled>{available.length ? '+ Add a class…' : 'No more classes available'}</option>
-                        {available.map(c => (
-                          <option key={c.id} value={c.id}>
-                            {c.name}{c.start_time ? ` — Sun ${fmtTime(c.start_time)}` : ''}
+                    <select disabled={busy || available.length === 0} value=""
+                      onChange={e => { addClass(m.id, e.target.value); e.target.value = '' }}
+                      className="text-xs border border-slate-200 rounded-lg px-2 h-8 bg-white outline-none text-slate-600 cursor-pointer disabled:opacity-50 max-w-[280px]">
+                      <option value="" disabled>{available.length ? '+ Enroll in a class…' : 'No more classes available'}</option>
+                      {available.map(c => {
+                        const full = c.max_students != null && (counts[c.id] || 0) >= c.max_students
+                        return (
+                          <option key={c.id} value={c.id} disabled={full}>
+                            {c.name}{c.courses?.price != null ? ` — ${money(c.courses.price)}` : ''}{full ? ' — FULL' : ''}
                           </option>
-                        ))}
-                      </select>
-                    </div>
+                        )
+                      })}
+                    </select>
                   </>
                 )}
               </Card>
@@ -278,34 +344,47 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
         </div>
       )}
 
-      {/* Payments */}
+      {/* Balance ledger */}
       <div className="flex items-center justify-between mb-3">
-        <h3 className="font-display text-lg text-slate-900">Payments</h3>
-        <div className="flex gap-4 text-sm">
-          <span className="text-slate-500">Paid: <span className="font-semibold text-green-600">{money(paid)}</span></span>
-          <span className="text-slate-500">Owed: <span className={`font-semibold ${owed > 0 ? 'text-amber-600' : 'text-slate-700'}`}>{money(owed)}</span></span>
-        </div>
+        <h3 className="font-display text-lg text-slate-900">Balance History</h3>
+        <span className="text-xs text-slate-400">Immutable audit trail</span>
       </div>
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
           <p className="py-8 text-center text-slate-400 text-sm">Loading…</p>
-        ) : allPayments.length === 0 ? (
-          <p className="py-8 text-center text-slate-400 text-sm">No payment records for this family.</p>
+        ) : ledger.length === 0 ? (
+          <p className="py-8 text-center text-slate-400 text-sm">No transactions yet.</p>
         ) : (
-          <Table headers={['Member', 'Description', 'Amount', 'Status', 'Date']}>
-            {members.flatMap(m => (payByMember[m.id] || []).map(p => (
-              <Tr key={p.id}>
-                <Td className="text-slate-700">{m.full_name}</Td>
-                <Td className="text-slate-500">{p.fee_structures?.name || '—'}</Td>
-                <Td><span className="font-semibold text-slate-900">{money(p.amount)}</span></Td>
-                <Td><Badge variant={p.status === 'paid' ? 'success' : p.status === 'pending' ? 'warning' : 'danger'}>{p.status}</Badge></Td>
-                <Td className="text-slate-400 text-xs">{p.paid_at?.slice(0, 10) || '—'}</Td>
+          <Table headers={['Date', 'Type', 'Detail', 'By', 'Amount']}>
+            {ledger.map(t => (
+              <Tr key={t.id}>
+                <Td className="text-slate-400 text-xs whitespace-nowrap">{t.created_at?.slice(0, 10)}</Td>
+                <Td className="text-slate-700">{METHOD_LABEL[t.method] || t.method}</Td>
+                <Td className="text-slate-500 text-xs">
+                  {[t.member?.full_name, t.classes?.name, t.note].filter(Boolean).join(' · ') || '—'}
+                </Td>
+                <Td className="text-slate-400 text-xs">{t.created_by_name || 'System'}</Td>
+                <Td><span className={`font-semibold ${Number(t.amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>{money(t.amount)}</span></Td>
               </Tr>
-            )))}
+            ))}
           </Table>
         )}
       </Card>
+
+      {/* Record payment modal */}
+      <Modal open={payOpen} onClose={() => setPayOpen(false)} title="Record Payment">
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">Add a cash payment received at the front office. This credits the family balance and is recorded in the ledger.</p>
+          <Input label="Amount ($)" id="payamt" type="number" placeholder="e.g. 320" value={payForm.amount} onChange={e => setPayForm(f => ({ ...f, amount: e.target.value }))} required />
+          <Input label="Note (optional)" id="paynote" placeholder="e.g. Check #1234" value={payForm.note} onChange={e => setPayForm(f => ({ ...f, note: e.target.value }))} />
+          {payError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{payError}</p>}
+          <div className="flex gap-2 pt-2 border-t border-slate-100">
+            <Button variant="gold" size="sm" disabled={busy} onClick={submitPayment}>{busy ? 'Recording…' : 'Record Payment'}</Button>
+            <Button variant="outline" size="sm" onClick={() => setPayOpen(false)}>Cancel</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Add member modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Family Member">
@@ -315,7 +394,7 @@ function FamilyDetail({ family, classes, onBack, onChanged }) {
             <option value="student">Student</option>
             <option value="parent">Parent / Guardian</option>
           </Select>
-          <p className="text-xs text-slate-400">Members belong to this family and don't sign in directly — the family logs in with {family.email}.</p>
+          <p className="text-xs text-slate-400">Members belong to this family and don't sign in directly — the family logs in with its own account.</p>
           {addError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{addError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">
             <Button variant="gold" size="sm" disabled={busy || !addForm.full_name.trim()} onClick={addMember}>{busy ? 'Adding…' : 'Add Member'}</Button>

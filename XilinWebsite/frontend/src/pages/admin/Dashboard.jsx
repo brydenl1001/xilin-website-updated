@@ -1,43 +1,35 @@
 import { useState, useEffect } from 'react'
-import { Users, UserCheck, Coins, TrendingUp } from 'lucide-react'
-import { listProfiles, listEnrollmentApplications, listPayments, listAnnouncements, listClasses, getAttendanceSummary } from '../../lib/supabaseClient'
+import { Users, UserCheck, Wallet, GraduationCap } from 'lucide-react'
+import { listProfiles, listEnrollmentApplications, listFamilies, listAnnouncements, listClasses } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, Button, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
 
 const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
-const today = () => new Date().toISOString().slice(0, 10)
+const money = (n) => `$${Math.abs(Number(n || 0)).toFixed(2)}`
 
 export default function AdminDashboard() {
   const [studentCount, setStudentCount] = useState(0)
-  const [pendingEnrollments, setPendingEnrollments] = useState(0)
-  const [feesCollected, setFeesCollected] = useState(0)
+  const [pending, setPending] = useState(0)
+  const [classCount, setClassCount] = useState(0)
+  const [families, setFamilies] = useState([])
   const [announcements, setAnnouncements] = useState([])
-  const [classAttendance, setClassAttendance] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [students, applications, payments, annData, classes] = await Promise.all([
+        const [students, applications, fams, annData, classes] = await Promise.all([
           listProfiles('student'),
           listEnrollmentApplications('pending'),
-          listPayments('paid'),
+          listFamilies(),
           listAnnouncements(),
           listClasses(),
         ])
-
         setStudentCount(students.length)
-        setPendingEnrollments(applications.length)
-        setFeesCollected(payments.reduce((s, p) => s + Number(p.amount), 0))
+        setPending(applications.length)
+        setFamilies(fams)
         setAnnouncements(annData.slice(0, 4))
-
-        const attendanceResults = await Promise.all(
-          classes.slice(0, 6).map(async cls => ({
-            ...cls,
-            summary: await getAttendanceSummary(cls.id, today(), today()),
-          }))
-        )
-        setClassAttendance(attendanceResults)
+        setClassCount(classes.length)
       } catch (err) {
         console.error(err)
       } finally {
@@ -47,23 +39,18 @@ export default function AdminDashboard() {
     load()
   }, [])
 
-  const avgAttendance = classAttendance.filter(c => c.summary.total > 0).length
-    ? Math.round(
-        classAttendance.filter(c => c.summary.total > 0).reduce((s, c) => s + c.summary.pct, 0) /
-        classAttendance.filter(c => c.summary.total > 0).length
-      )
-    : 0
+  const owing = families.filter(f => Number(f.balance) < 0).sort((a, b) => Number(a.balance) - Number(b.balance))
+  const totalOwed = owing.reduce((s, f) => s + Math.abs(Number(f.balance)), 0)
 
   const stats = [
-    { label: 'Total Students', value: studentCount.toLocaleString(), delta: 'Active accounts', trend: 'up', Icon: Users },
-    { label: 'Pending Applications', value: pendingEnrollments, delta: 'Awaiting review', trend: pendingEnrollments > 0 ? 'warn' : 'up', Icon: UserCheck },
-    { label: 'Fees Collected', value: `$${feesCollected.toLocaleString()}`, delta: 'All-time paid', trend: 'up', Icon: Coins },
-    { label: 'Avg. Attendance', value: `${avgAttendance}%`, delta: 'Today, sample of classes', trend: 'up', Icon: TrendingUp },
+    { label: 'Total Students', value: studentCount.toLocaleString(), delta: 'Member accounts', trend: 'up', Icon: Users },
+    { label: 'Pending Applications', value: pending, delta: 'Awaiting review', trend: pending > 0 ? 'warn' : 'up', Icon: UserCheck },
+    { label: 'Outstanding', value: money(totalOwed), delta: `${owing.length} famil${owing.length === 1 ? 'y' : 'ies'} owing`, trend: owing.length > 0 ? 'warn' : 'up', Icon: Wallet },
+    { label: 'Classes', value: classCount, delta: 'Scheduled', trend: 'up', Icon: GraduationCap },
   ]
 
   return (
     <div className="max-w-6xl animate-fade-in">
-      {/* Welcome */}
       <div className="relative bg-navy rounded-2xl p-6 mb-6 overflow-hidden flex items-center justify-between">
         <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-yellow-400/5 pointer-events-none" />
         <div>
@@ -77,7 +64,6 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading
           ? Array.from({ length: 4 }).map((_, i) => <Card key={i}><p className="text-slate-300 text-sm">Loading…</p></Card>)
@@ -106,28 +92,21 @@ export default function AdminDashboard() {
           ))}
         </Card>
 
-        {/* Attendance */}
+        {/* Outstanding balances */}
         <Card>
-          <SectionHeader title="Today's Attendance"
-            action={<Link to="/attendance" className="text-xs text-yellow-600 hover:text-yellow-700">Full report</Link>} />
+          <SectionHeader title="Outstanding Balances"
+            action={<Link to="/reports" className="text-xs text-yellow-600 hover:text-yellow-700">Full report</Link>} />
           {loading ? (
             <p className="text-slate-400 text-sm py-6">Loading…</p>
-          ) : classAttendance.length === 0 ? (
-            <p className="text-slate-400 text-sm py-6">No classes found.</p>
-          ) : classAttendance.map(cls => (
-            <div key={cls.id} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+          ) : owing.length === 0 ? (
+            <p className="text-slate-400 text-sm py-6">No families owe a balance. 🎉</p>
+          ) : owing.slice(0, 6).map(f => (
+            <div key={f.id} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
               <div>
-                <p className="text-[13px] font-medium text-slate-900">{cls.name}</p>
-                <p className="text-[11px] text-slate-400">{cls.courses?.name}</p>
+                <p className="text-[13px] font-medium text-slate-900">{f.family_name}</p>
+                <p className="text-[11px] text-slate-400">ID {f.family_code}</p>
               </div>
-              {cls.summary.total > 0 ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-20 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${cls.summary.pct >= 90 ? 'bg-green-400' : cls.summary.pct >= 75 ? 'bg-amber-400' : 'bg-red-400'}`} style={{ width: `${cls.summary.pct}%` }} />
-                  </div>
-                  <span className="text-xs font-medium text-slate-700">{cls.summary.pct}%</span>
-                </div>
-              ) : <Badge variant="warning">Not marked</Badge>}
+              <span className="text-sm font-semibold text-red-600">{money(f.balance)}</span>
             </div>
           ))}
         </Card>

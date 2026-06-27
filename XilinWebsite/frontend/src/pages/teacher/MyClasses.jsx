@@ -1,18 +1,16 @@
 import { useState, useEffect } from 'react'
 import { BookOpen } from 'lucide-react'
-import { listMyClasses, getClassRoster, getAttendanceSummary } from '../../lib/supabaseClient'
+import { listMyClasses, getClassRoster } from '../../lib/supabaseClient'
 import { Card, Badge, PageHeader } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 
-const today = () => new Date().toISOString().slice(0, 10)
-const daysAgo = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10)
+const fmtTime = (t) => t ? t.slice(0, 5) : ''
 
 export default function TeacherMyClasses() {
   const { user } = useAuth()
   const [classes, setClasses] = useState([])
   const [selected, setSelected] = useState(null)
   const [roster, setRoster] = useState([])
-  const [attendanceStats, setAttendanceStats] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -24,13 +22,9 @@ export default function TeacherMyClasses() {
 
   const openClass = async (cls) => {
     setSelected(cls)
+    setRoster([])
     try {
-      const [rosterData, attStats] = await Promise.all([
-        getClassRoster(cls.id),
-        getAttendanceSummary(cls.id, daysAgo(30), today()),
-      ])
-      setRoster(rosterData)
-      setAttendanceStats(attStats)
+      setRoster(await getClassRoster(cls.id))
     } catch (err) {
       console.error(err)
     }
@@ -49,26 +43,32 @@ export default function TeacherMyClasses() {
             <p className="text-yellow-400 text-xs uppercase tracking-widest mb-2">{selected.courses?.name}</p>
             <h2 className="font-display text-2xl mb-1">{selected.name}</h2>
             <div className="flex gap-6 mt-3 text-sm text-slate-400">
+              {selected.day_of_week && <span>{selected.day_of_week} {fmtTime(selected.start_time)}{selected.end_time ? `–${fmtTime(selected.end_time)}` : ''}</span>}
               {selected.room && <span>{selected.room}</span>}
-              <span>{roster.length} students</span>
+              <span>{roster.length} enrolled</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4 mb-5">
-            <Card><p className="font-display text-2xl text-slate-900">{attendanceStats?.pct ?? '—'}%</p><p className="text-xs text-slate-400 mt-0.5">Attendance Rate (30d)</p></Card>
-            <Card><p className="font-display text-2xl text-slate-900">{roster.length}</p><p className="text-xs text-slate-400 mt-0.5">Students Enrolled</p></Card>
-          </div>
           <Card>
-            <h3 className="font-display text-base text-slate-900 mb-4">Student Roster</h3>
+            <h3 className="font-display text-base text-slate-900 mb-4">Roster &amp; Guardian Contact</h3>
             {roster.length === 0 ? (
-              <p className="text-slate-400 text-sm py-4">No students enrolled in this class yet.</p>
+              <p className="text-slate-400 text-sm py-4">No one enrolled in this class yet.</p>
             ) : (
-              <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1.5">
                 {roster.map(r => (
-                  <div key={r.id} className="flex items-center gap-2.5 p-2.5 bg-slate-50 rounded-lg">
-                    <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-semibold text-yellow-700 flex-shrink-0">
-                      {r.profiles?.full_name?.split(' ').map(n => n[0]).join('') || '?'}
+                  <div key={r.member_id} className="flex items-center justify-between gap-3 p-2.5 bg-slate-50 rounded-lg">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="w-7 h-7 rounded-full bg-yellow-100 flex items-center justify-center text-xs font-semibold text-yellow-700 flex-shrink-0">
+                        {r.member_name?.split(' ').map(n => n[0]).join('').slice(0, 2) || '?'}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm text-slate-800 truncate">{r.member_name}</p>
+                        <p className="text-[11px] text-slate-400 capitalize">{r.member_role}{r.family_name ? ` · ${r.family_name}` : ''}</p>
+                      </div>
                     </div>
-                    <span className="text-sm text-slate-700">{r.profiles?.full_name}</span>
+                    <div className="text-right text-[11px] text-slate-500 flex-shrink-0">
+                      {r.email && <p className="truncate max-w-[180px]">{r.email}</p>}
+                      {r.phone && <p>{r.phone}</p>}
+                    </div>
                   </div>
                 ))}
               </div>

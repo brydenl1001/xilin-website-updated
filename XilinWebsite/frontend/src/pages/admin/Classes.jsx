@@ -3,9 +3,9 @@ import { Plus, Pencil } from 'lucide-react'
 import {
   listClasses, createClass, updateClass,
   listCourses, listSemesters, listProfiles,
-  assignTeacherToClass, removeTeacherFromClass,
+  assignTeacherToClass, removeTeacherFromClass, getClassCounts, getClassRoster,
 } from '../../lib/supabaseClient'
-import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar } from '../../components/ui'
+import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 
 const SORT_OPTIONS = [
@@ -27,17 +27,28 @@ export default function AdminClasses() {
   const [courses, setCourses] = useState([])
   const [semesters, setSemesters] = useState([])
   const [teachers, setTeachers] = useState([])
+  const [counts, setCounts] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(BLANK)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
+  const [viewing, setViewing] = useState(null)
+  const [viewRoster, setViewRoster] = useState([])
+  const [viewLoading, setViewLoading] = useState(false)
+
+  const openView = async (c) => {
+    setViewing(c); setViewRoster([]); setViewLoading(true)
+    try { setViewRoster(await getClassRoster(c.id)) }
+    catch (e) { console.error(e) }
+    finally { setViewLoading(false) }
+  }
 
   const load = () => {
     setLoading(true)
-    Promise.all([listClasses(), listCourses(), listSemesters(), listProfiles('teacher')])
-      .then(([cl, co, se, te]) => { setClasses(cl); setCourses(co); setSemesters(se); setTeachers(te) })
+    Promise.all([listClasses(), listCourses(), listSemesters(), listProfiles('teacher'), getClassCounts()])
+      .then(([cl, co, se, te, cn]) => { setClasses(cl); setCourses(co); setSemesters(se); setTeachers(te); setCounts(cn) })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }
@@ -109,24 +120,86 @@ export default function AdminClasses() {
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
-          <Table headers={['Class', 'Course', 'When', 'Room', 'Lead Teacher', '']}>
+          <Table headers={['Class', 'Course', 'When', 'Enrolled', 'Lead Teacher', '']}>
             {filtered.length === 0 ? (
               <Tr><Td className="py-12 text-center text-slate-400">No classes scheduled yet.</Td></Tr>
-            ) : filtered.map(c => (
-              <Tr key={c.id} onClick={() => openEdit(c)}>
-                <Td><span className="font-medium text-slate-900">{c.name}</span></Td>
-                <Td className="text-slate-600">{c.courses?.name || '—'}</Td>
-                <Td className="text-slate-600 text-xs">
-                  {c.day_of_week ? `${c.day_of_week} ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}` : '—'}
-                </Td>
-                <Td className="text-slate-600">{c.room || '—'}</Td>
-                <Td className="text-slate-600">{leadOf(c)?.full_name || <span className="text-slate-300">Unassigned</span>}</Td>
-                <Td><Pencil size={14} className="text-slate-400" /></Td>
-              </Tr>
-            ))}
+            ) : filtered.map(c => {
+              const enrolled = counts[c.id] || 0
+              const cap = c.max_students
+              const full = cap != null && enrolled >= cap
+              return (
+                <Tr key={c.id} onClick={() => openView(c)}>
+                  <Td><span className="font-medium text-slate-900">{c.name}</span></Td>
+                  <Td className="text-slate-600">{c.courses?.name || '—'}</Td>
+                  <Td className="text-slate-600 text-xs">
+                    {c.day_of_week ? `${c.day_of_week} ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}` : '—'}
+                  </Td>
+                  <Td>
+                    <span className="text-slate-600 text-sm">{enrolled}{cap != null ? ` / ${cap}` : ''}</span>
+                    {full && <Badge variant="danger">Full</Badge>}
+                  </Td>
+                  <Td className="text-slate-600">{leadOf(c)?.full_name || <span className="text-slate-300">Unassigned</span>}</Td>
+                  <Td>
+                    <button onClick={e => { e.stopPropagation(); openEdit(c) }} title="Edit"
+                      className="text-slate-400 hover:text-yellow-600 transition-colors cursor-pointer p-1"><Pencil size={14} /></button>
+                  </Td>
+                </Tr>
+              )
+            })}
           </Table>
         )}
       </Card>
+
+      {/* Class details */}
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.name || 'Class'}>
+        {viewing && (
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-3 bg-slate-50 rounded-xl p-4">
+              {[
+                ['Course', viewing.courses?.name || '—'],
+                ['Lead Teacher', leadOf(viewing)?.full_name || 'Unassigned'],
+                ['When', viewing.day_of_week ? `${viewing.day_of_week} ${fmtTime(viewing.start_time)}${viewing.end_time ? `–${fmtTime(viewing.end_time)}` : ''}` : '—'],
+                ['Room', viewing.room || '—'],
+                ['Semester', viewing.semesters?.name || '—'],
+                ['Capacity', `${counts[viewing.id] || 0}${viewing.max_students != null ? ` / ${viewing.max_students}` : ''}`],
+                ['Tuition', viewing.courses?.price != null ? `$${Number(viewing.courses.price).toFixed(2)}` : '—'],
+                ['Materials Fee', viewing.courses?.materials_fee != null ? `$${Number(viewing.courses.materials_fee).toFixed(2)}` : 'None'],
+              ].map(([k, v]) => (
+                <div key={k}>
+                  <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-0.5">{k}</p>
+                  <p className="text-sm font-medium text-slate-900">{v}</p>
+                </div>
+              ))}
+            </div>
+
+            <div>
+              <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-2">Enrolled ({viewRoster.length})</p>
+              {viewLoading ? (
+                <p className="text-sm text-slate-400">Loading roster…</p>
+              ) : viewRoster.length === 0 ? (
+                <p className="text-sm text-slate-400">No one is enrolled yet.</p>
+              ) : (
+                <div className="space-y-1.5 max-h-60 overflow-y-auto scrollbar-thin">
+                  {viewRoster.map(r => (
+                    <div key={r.member_id} className="flex items-center justify-between gap-3 p-2 bg-slate-50 rounded-lg">
+                      <div className="min-w-0">
+                        <span className="text-sm text-slate-800">{r.member_name}</span>
+                        <span className="text-[11px] text-slate-400 capitalize ml-2">{r.member_role}{r.family_name ? ` · ${r.family_name}` : ''}</span>
+                      </div>
+                      {r.email && <span className="text-[11px] text-slate-400 truncate max-w-[160px]">{r.email}</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <Button variant="gold" size="sm" onClick={() => { const c = viewing; setViewing(null); openEdit(c) }}>Edit Class</Button>
+              <Button variant="outline" size="sm" onClick={() => setViewing(null)}>Close</Button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? 'Edit Class' : 'New Class'}>
         <div className="space-y-4">

@@ -181,9 +181,14 @@ export default function AdminApplications() {
             {result?.status === 'approved' && (
               <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 space-y-1.5">
                 <p className="flex items-center gap-2 font-medium"><Check size={14} /> Approved — {result.enrolled} class{result.enrolled !== 1 ? 'es' : ''} enrolled.</p>
+                {result.family_code && (
+                  <p className="flex items-center gap-2 text-xs">
+                    Family ID (sign-in): <span className="font-mono font-semibold bg-white px-1.5 py-0.5 rounded border border-green-200">{result.family_code}</span>
+                  </p>
+                )}
                 {result.temp_password && (
                   <p className="flex items-center gap-2 text-xs">
-                    <KeyRound size={13} /> Temporary login password: <span className="font-mono font-semibold bg-white px-1.5 py-0.5 rounded border border-green-200">{result.temp_password}</span>
+                    <KeyRound size={13} /> Temporary password: <span className="font-mono font-semibold bg-white px-1.5 py-0.5 rounded border border-green-200">{result.temp_password}</span>
                   </p>
                 )}
                 {result.temp_password && (

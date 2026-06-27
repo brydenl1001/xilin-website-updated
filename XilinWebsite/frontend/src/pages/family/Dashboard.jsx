@@ -1,50 +1,45 @@
 import { useState, useEffect } from 'react'
-import { BookOpen, Coins, MessageSquare } from 'lucide-react'
-import { getOwnPayments, getOwnEnrollments, listAnnouncements } from '../../lib/supabaseClient'
+import { BookOpen, Wallet, MessageSquare } from 'lucide-react'
+import { getOwnFamily, getOwnEnrollments, listAnnouncements } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 
 const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
+const money = (n) => `${Number(n) < 0 ? '-' : ''}$${Math.abs(Number(n || 0)).toFixed(2)}`
 
 export default function FamilyDashboard() {
   const { user } = useAuth()
   const members = (user.familyMembers || [])
   const [memberId, setMemberId] = useState(members[0]?.id || '')
   const [enrollments, setEnrollments] = useState([])
-  const [payments, setPayments] = useState([])
+  const [family, setFamily] = useState(null)
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
 
   const member = members.find(s => s.id === memberId)
 
+  // Family balance + announcements (independent of which member is selected)
+  useEffect(() => {
+    getOwnFamily(user.id).then(setFamily).catch(() => {})
+    listAnnouncements().then(a => setAnnouncements(a.slice(0, 4))).catch(() => {})
+  }, [user.id])
+
   useEffect(() => {
     if (!memberId) { setLoading(false); return }
-    const load = async () => {
-      try {
-        const [enrollData, paymentData, annData] = await Promise.all([
-          getOwnEnrollments(memberId),
-          getOwnPayments(memberId),
-          listAnnouncements(),
-        ])
-        setEnrollments(enrollData)
-        setPayments(paymentData)
-        setAnnouncements(annData.slice(0, 4))
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    load()
+    getOwnEnrollments(memberId)
+      .then(setEnrollments)
+      .catch(err => console.error(err))
+      .finally(() => setLoading(false))
   }, [memberId])
 
   const myClasses = enrollments.filter(e => e.status === 'enrolled')
-  const pendingFees = payments.filter(p => p.status === 'pending').reduce((s, p) => s + Number(p.amount), 0)
+  const balance = Number(family?.balance || 0)
+  const owes = balance < 0
 
   const stats = [
     { label: 'Enrolled Classes', value: myClasses.length, delta: member?.full_name || '—', trend: 'up', Icon: BookOpen },
-    { label: 'Outstanding Fees', value: `$${pendingFees.toLocaleString()}`, delta: pendingFees > 0 ? 'Action needed' : 'All paid', trend: pendingFees > 0 ? 'warn' : 'up', Icon: Coins },
+    { label: owes ? 'Amount Due' : 'Balance', value: money(balance), delta: owes ? 'Action needed' : 'Settled', trend: owes ? 'warn' : 'up', Icon: Wallet },
     { label: 'Announcements', value: announcements.length, delta: 'New updates', trend: 'up', Icon: MessageSquare },
   ]
 

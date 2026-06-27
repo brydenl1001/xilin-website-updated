@@ -3,10 +3,10 @@ import { supabase } from './supabase'
 // ═════════════════════════════════════════════════════════════════════════════
 // CLIENT-SIDE SUPABASE FUNCTIONS
 // ═════════════════════════════════════════════════════════════════════════════
-// Aligned with the final schema:
+// Aligned with the schema:
 //   profiles, families, family_members, semesters, courses, classes,
-//   class_teachers, enrollments, fee_structures, payments, announcements,
-//   grades, attendance
+//   class_teachers, enrollments, balance_transactions, enrollment_applications,
+//   announcements
 //
 // All functions here use the anon key and rely on RLS policies for access
 // control. Safe to call directly from React components/pages.
@@ -118,9 +118,29 @@ export async function createAccount(payload) {
 // AUTH
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Sign in with email + password. Works for admin, teacher, student, or family. */
+/** Sign in with email + password (staff: admin/teacher). */
 export async function signIn(email, password) {
   return supabase.auth.signInWithPassword({ email, password })
+}
+
+/**
+ * Family sign-in by username OR 4-digit Family ID + password. Routed through the
+ * `family-login` edge function, which resolves the identifier to the account and
+ * returns a session that we apply locally.
+ */
+export async function familyLogin(identifier, password) {
+  const { data, error } = await supabase.functions.invoke('family-login', { body: { identifier, password } })
+  if (error) {
+    let message = 'Sign-in failed.'
+    try { const b = await error.context?.json?.(); if (b?.error) message = b.error } catch { /* keep default */ }
+    throw new Error(message)
+  }
+  if (!data?.access_token) throw new Error(data?.error || 'Sign-in failed.')
+  const { error: sErr } = await supabase.auth.setSession({
+    access_token: data.access_token, refresh_token: data.refresh_token,
+  })
+  if (sErr) throw sErr
+  return true
 }
 
 /** Sign out the current session. */
@@ -589,133 +609,81 @@ export async function deleteEnrollment(enrollmentId) {
   if (error) throw error
 }
 
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BALANCE & PAYMENTS (family balance + immutable ledger)
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
- * Teacher/admin: get the roster of students enrolled in a specific class.
- *
- * NOTE — RLS GAP: the current enrollments policy grants ANY teacher full
- * access (is_teacher() returns true for all teachers, not just those
- * assigned to this class). Tighten it with something like:
- *
- *   create policy "Teacher sees own class enrollments" on enrollments
- *     for select using (
- *       exists (
- *         select 1 from class_teachers ct
- *         where ct.class_id = enrollments.class_id
- *           and ct.teacher_id = auth.uid()
- *       )
- *     );
- *
- * and drop teachers from the blanket is_admin() or is_teacher() policy.
+ * Enroll a member into a class. Atomic: capacity hard-stop, debits the class
+ * price from the family balance, and writes a ledger entry. Throws a friendly
+ * message if the class is full, registration closed, or already enrolled.
  */
+export async function enrollMember(memberId, classId) {
+  const { data, error } = await supabase.rpc('enroll_member', { p_member_id: memberId, p_class_id: classId })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** Drop a member from a class — auto-calculates the prorated credit back to the family balance. */
+export async function dropMember(enrollmentId) {
+  const { data, error } = await supabase.rpc('drop_member', { p_enrollment_id: enrollmentId })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** Record a payment / balance change. method: 'online' (family/admin) | 'cash' | 'adjustment' (admin). */
+export async function recordPayment(familyId, amount, method, note = null) {
+  const { data, error } = await supabase.rpc('record_payment', {
+    p_family_id: familyId, p_amount: amount, p_method: method, p_note: note,
+  })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** Enrolled count per class (for capacity / "full" display). Returns a Map of class_id → count. */
+export async function getClassCounts() {
+  const { data, error } = await supabase.from('class_enrolled_counts').select('*')
+  if (error) throw error
+  const map = {}
+  ;(data || []).forEach(r => { map[r.class_id] = r.enrolled })
+  return map
+}
+
+/** Admin: copy every class from one semester into another. Returns the number copied. */
+export async function copySemesterClasses(fromId, toId) {
+  const { data, error } = await supabase.rpc('copy_semester_classes', { p_from: fromId, p_to: toId })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** Admin/teacher: roster (with guardian contact) for a class taught by the caller. */
 export async function getClassRoster(classId) {
-  const { data, error } = await supabase
-    .from('enrollments')
-    .select('*, profiles(*)')
-    .eq('class_id', classId)
-    .eq('status', 'enrolled')
-  if (error) throw error
+  const { data, error } = await supabase.rpc('get_class_roster', { p_class_id: classId })
+  if (error) throw new Error(error.message)
   return data
 }
 
-
-// ─────────────────────────────────────────────────────────────────────────────
-// FEE STRUCTURES
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Authenticated: list fee structures, optionally filtered by semester. */
-export async function listFeeStructures(semesterId = null) {
-  let query = supabase.from('fee_structures').select('*, semesters(*)')
-  if (semesterId) query = query.eq('semester_id', semesterId)
-
-  const { data, error } = await query.order('due_date', { ascending: true })
-  if (error) throw error
-  return data
-}
-
-/** Admin: create a fee structure (name, amount, due_date required; semester_id optional). */
-export async function createFeeStructure(feeStructure) {
+/** Admin: all ledger transactions (for the financial summary report). */
+export async function listAllTransactions() {
   const { data, error } = await supabase
-    .from('fee_structures')
-    .insert(feeStructure)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-/** Admin: update a fee structure. */
-export async function updateFeeStructure(feeStructureId, updates) {
-  const { data, error } = await supabase
-    .from('fee_structures')
-    .update(updates)
-    .eq('id', feeStructureId)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PAYMENTS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Student/family: get own payment history. */
-export async function getOwnPayments(studentId) {
-  const { data, error } = await supabase
-    .from('payments')
-    .select('*, fee_structures(*)')
-    .eq('student_id', studentId)
+    .from('balance_transactions')
+    .select('amount, method, created_at')
     .order('created_at', { ascending: false })
   if (error) throw error
   return data
 }
 
-/** Admin: list all payments, optionally filtered by status. */
-export async function listPayments(status = null) {
-  let query = supabase
-    .from('payments')
-    .select('*, profiles(full_name), fee_structures(*)')
-
-  if (status) query = query.eq('status', status)
-
-  const { data, error } = await query.order('created_at', { ascending: false })
-  if (error) throw error
-  return data
-}
-
-/**
- * SANDBOX ONLY. Simulates what a real backend webhook would do after
- * verifying a charge with the payment gateway. Never trust a client-only
- * "success" signal for real money — this is for demo/testing purposes.
- */
-export async function confirmSandboxPayment(paymentId) {
-  const ref = `SAND-${Math.random().toString(36).slice(2, 8).toUpperCase()}`
+/** Family/admin: list a family's balance ledger (immutable audit trail), newest first. */
+export async function listBalanceTransactions(familyId) {
   const { data, error } = await supabase
-    .from('payments')
-    .update({
-      status: 'paid',
-      paid_at: new Date().toISOString(),
-      transaction_ref: ref,
-    })
-    .eq('id', paymentId)
-    .select()
-    .single()
+    .from('balance_transactions')
+    .select('*, classes(name, courses(name)), member:member_id(full_name)')
+    .eq('family_id', familyId)
+    .order('created_at', { ascending: false })
   if (error) throw error
   return data
 }
-
-/** Admin: create a payment/invoice record for a student. */
-export async function createPayment(payment) {
-  const { data, error } = await supabase
-    .from('payments')
-    .insert(payment)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ANNOUNCEMENTS
@@ -779,79 +747,6 @@ export async function deleteAnnouncement(announcementId) {
     .delete()
     .eq('id', announcementId)
   if (error) throw error
-}
-
-
-// ─────────────────────────────────────────────────────────────────────────────
-// ATTENDANCE
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Student/family: get own attendance record, optionally filtered by class. */
-export async function getOwnAttendance(studentId, classId = null) {
-  let query = supabase
-    .from('attendance')
-    .select('*, classes(*)')
-    .eq('student_id', studentId)
-
-  if (classId) query = query.eq('class_id', classId)
-
-  const { data, error } = await query.order('date', { ascending: false })
-  if (error) throw error
-  return data
-}
-
-/** Teacher: get attendance for a class on a specific date (YYYY-MM-DD). */
-export async function getClassAttendance(classId, date) {
-  const { data, error } = await supabase
-    .from('attendance')
-    .select('*, profiles(full_name)')
-    .eq('class_id', classId)
-    .eq('date', date)
-  if (error) throw error
-  return data
-}
-
-/**
- * Teacher: mark attendance for a single student.
- * Uses the existing unique constraint on (student_id, class_id, date)
- * already defined in the schema — no migration needed for this one.
- */
-export async function markAttendance(studentId, classId, date, present, note = null) {
-  const { data, error } = await supabase
-    .from('attendance')
-    .upsert(
-      { student_id: studentId, class_id: classId, date, present, note },
-      { onConflict: 'student_id,class_id,date' }
-    )
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-/** Teacher: bulk-mark attendance for a whole class at once. */
-export async function bulkMarkAttendance(records) {
-  const { data, error } = await supabase
-    .from('attendance')
-    .upsert(records, { onConflict: 'student_id,class_id,date' })
-    .select()
-  if (error) throw error
-  return data
-}
-
-/** Get attendance summary stats for a class over a date range. */
-export async function getAttendanceSummary(classId, startDate, endDate) {
-  const { data, error } = await supabase
-    .from('attendance')
-    .select('present')
-    .eq('class_id', classId)
-    .gte('date', startDate)
-    .lte('date', endDate)
-  if (error) throw error
-
-  const total = data.length
-  const present = data.filter(r => r.present).length
-  return { total, present, absent: total - present, pct: total ? Math.round((present / total) * 100) : 0 }
 }
 
 

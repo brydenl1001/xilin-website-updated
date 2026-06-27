@@ -5,6 +5,7 @@ import PublicLayout from '../components/layout/PublicLayout'
 
 // Public pages
 import Home          from '../pages/public/Home'
+import PublicAbout   from '../pages/public/PublicAbout'
 import PublicNews    from '../pages/public/PublicNews'
 import PublicClasses from '../pages/public/PublicClasses'
 import PublicEnroll  from '../pages/public/PublicEnroll'
@@ -20,20 +21,18 @@ import AdminDashboard   from '../pages/admin/Dashboard'
 import AdminApplications from '../pages/admin/Applications'
 import AdminCourses     from '../pages/admin/Courses'
 import AdminClasses     from '../pages/admin/Classes'
+import AdminSemesters   from '../pages/admin/Semesters'
+import AdminReports     from '../pages/admin/Reports'
 import AdminFamilies    from '../pages/admin/Families'
-import AdminPayments    from '../pages/admin/Payments'
-import AdminAttendance  from '../pages/admin/Attendance'
 import AdminTimetable   from '../pages/admin/Timetable'
 import AdminUsers       from '../pages/admin/Users'
 
 // Teacher pages
 import TeacherDashboard  from '../pages/teacher/Dashboard'
 import TeacherMyClasses  from '../pages/teacher/MyClasses'
-import TeacherAttendance from '../pages/teacher/Attendance'
 
 // Family (household) pages
 import FamilyDashboard       from '../pages/family/Dashboard'
-import FamilyChildAttendance from '../pages/family/ChildAttendance'
 import FamilyPayments        from '../pages/family/Payments'
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
@@ -72,26 +71,24 @@ function PortalRoutes() {
 
         {/* Admin */}
         {role === 'admin' && <>
-          <Route path="/attendance"  element={<AdminAttendance />} />
           <Route path="/timetable"   element={<AdminTimetable />} />
           <Route path="/applications" element={<AdminApplications />} />
           <Route path="/courses"        element={<AdminCourses />} />
           <Route path="/manage-classes" element={<AdminClasses />} />
+          <Route path="/semesters"    element={<AdminSemesters />} />
+          <Route path="/reports"      element={<AdminReports />} />
           <Route path="/families"     element={<AdminFamilies />} />
-          <Route path="/payments"    element={<AdminPayments />} />
           <Route path="/users"       element={<AdminUsers />} />
         </>}
 
         {/* Teacher */}
         {role === 'teacher' && <>
           <Route path="/my-classes"  element={<TeacherMyClasses />} />
-          <Route path="/attendance"  element={<TeacherAttendance />} />
           <Route path="/timetable"   element={<Timetable subtitle="Your teaching schedule" />} />
         </>}
 
         {/* Family (household) */}
         {role === 'family' && <>
-          <Route path="/child-attendance"  element={<FamilyChildAttendance />} />
           <Route path="/child-timetable"   element={<Timetable subtitle="Weekly class schedule" />} />
           <Route path="/payments"          element={<FamilyPayments />} />
         </>}
@@ -110,6 +107,7 @@ function AppRoutes() {
     <Routes>
       {/* Public site */}
       <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
+      <Route path="/about" element={<PublicLayout><PublicAbout /></PublicLayout>} />
       <Route path="/news" element={<PublicLayout><PublicNews /></PublicLayout>} />
       <Route path="/classes" element={<PublicLayout><PublicClasses /></PublicLayout>} />
       <Route path="/enroll" element={<PublicLayout><PublicEnroll /></PublicLayout>} />

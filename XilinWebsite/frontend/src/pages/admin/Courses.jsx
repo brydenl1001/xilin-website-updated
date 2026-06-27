@@ -4,7 +4,7 @@ import { listCourses, createCourse, updateCourse } from '../../lib/supabaseClien
 import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Textarea, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 
-const BLANK = { code: '', name: '', subject_area: '', grade_level: '', price: '', description: '' }
+const BLANK = { code: '', name: '', subject_area: '', grade_level: '', price: '', materials_fee: '', description: '' }
 const SORT_OPTIONS = [
   { key: 'name', label: 'Name' },
   { key: 'code', label: 'Code' },
@@ -31,7 +31,7 @@ export default function AdminCourses() {
   const openEdit = (c) => {
     setForm({
       code: c.code || '', name: c.name || '', subject_area: c.subject_area || '',
-      grade_level: c.grade_level || '', price: c.price ?? '', description: c.description || '',
+      grade_level: c.grade_level || '', price: c.price ?? '', materials_fee: c.materials_fee ?? '', description: c.description || '',
     })
     setEditing(c); setSaveError('')
   }
@@ -45,6 +45,7 @@ export default function AdminCourses() {
       subject_area: form.subject_area.trim() || null,
       grade_level: form.grade_level.trim() || null,
       price: form.price === '' ? null : Number(form.price),
+      materials_fee: form.materials_fee === '' ? null : Number(form.materials_fee),
       description: form.description.trim() || null,
     }
     try {
@@ -95,9 +96,10 @@ export default function AdminCourses() {
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? 'Edit Course' : 'New Course'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Input label="Course Code" id="code" placeholder="e.g. MAND101" value={form.code} onChange={set('code')} required />
-            <Input label="Price (per term)" id="price" type="number" placeholder="e.g. 320" value={form.price} onChange={set('price')} />
+            <Input label="Tuition ($)" id="price" type="number" placeholder="320" value={form.price} onChange={set('price')} />
+            <Input label="Materials fee ($)" id="matfee" type="number" placeholder="0" value={form.materials_fee} onChange={set('materials_fee')} />
           </div>
           <Input label="Name" id="name" placeholder="e.g. Beginner Mandarin" value={form.name} onChange={set('name')} required />
           <div className="grid grid-cols-2 gap-3">
