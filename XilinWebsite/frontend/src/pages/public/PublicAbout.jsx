@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { schoolInfo, boardMembers } from '../../lib/mockData'
+import { schoolInfo, boardMembers } from '../../lib/basicInfo'
 import { listSemesters } from '../../lib/supabaseClient'
 import { Button } from '../../components/ui'
 import { ArrowRight, Mail, Globe, CalendarDays, Target, Users, Phone } from 'lucide-react'

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { schoolInfo } from '../../lib/mockData'
+import { schoolInfo } from '../../lib/basicInfo'
 import { listPublicAnnouncements, getPublicStats, getActiveSemester, listCalendarEvents } from '../../lib/supabaseClient'
 import { Button } from '../../components/ui'
 import EventCalendar, { semesterEvents } from '../../components/EventCalendar'
