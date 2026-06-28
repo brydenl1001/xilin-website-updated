@@ -1,8 +1,8 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Megaphone, BookOpen, Clock,
   Home, CreditCard, Users, Settings, LogOut, GraduationCap,
-  ChevronLeft, ChevronRight, Globe, Inbox, BarChart3
+  ChevronLeft, ChevronRight, Inbox, BarChart3, CalendarDays
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -19,6 +19,7 @@ const NAV_CONFIG = {
     ]},
     { section: 'Academic', items: [
       { label: 'Timetable',    to: '/timetable',  icon: Clock },
+      { label: 'Calendar',     to: '/calendar',   icon: CalendarDays },
     ]},
     { section: 'Management', items: [
       { label: 'Applications', to: '/applications', icon: Inbox },
@@ -81,11 +82,11 @@ export default function Sidebar({ collapsed, onToggle }) {
   const sections = NAV_CONFIG[user.role] || NAV_CONFIG.admin
 
   return (
-    <aside className={`h-screen flex flex-col bg-navy transition-[width] duration-300 ease-in-out flex-shrink-0 ${collapsed ? 'w-[60px]' : 'w-56'}`}>
+    <aside className={`h-full flex flex-col bg-navy transition-[width] duration-300 ease-in-out flex-shrink-0 ${collapsed ? 'w-[60px]' : 'w-56'}`}>
       {/* Brand */}
       <div className="flex items-center justify-between px-4 py-5 border-b border-white/8 min-h-[68px]">
         {!collapsed && (
-          <div className="flex items-center gap-2 overflow-hidden">
+          <Link to="/" title="Go to public site" className="flex items-center gap-2 overflow-hidden">
             <img src="/XilinLogo.png" alt="" className="w-8 h-8 object-contain flex-shrink-0" />
             <div className="overflow-hidden">
               <p className="font-display text-[15px] text-white whitespace-nowrap leading-tight">
@@ -93,9 +94,13 @@ export default function Sidebar({ collapsed, onToggle }) {
               </p>
               <p className="text-[9px] text-white/30 uppercase tracking-widest">Chinese School</p>
             </div>
-          </div>
+          </Link>
         )}
-        {collapsed && <img src="/XilinLogo.png" alt="Xilin logo" className="w-8 h-8 object-contain mx-auto" />}
+        {collapsed && (
+          <Link to="/" title="Go to public site" className="mx-auto">
+            <img src="/XilinLogo.png" alt="Xilin logo" className="w-8 h-8 object-contain" />
+          </Link>
+        )}
         {!collapsed && (
           <button onClick={onToggle} className="text-white/25 hover:text-white/60 transition-colors ml-2 flex-shrink-0 cursor-pointer">
             <ChevronLeft size={14} />
@@ -141,16 +146,6 @@ export default function Sidebar({ collapsed, onToggle }) {
           </div>
         ))}
       </nav>
-
-      {/* Public site link */}
-      <NavLink
-        to="/"
-        className="flex items-center gap-3 px-4 py-3 text-[12px] text-white/25 hover:text-white/50 border-t border-white/8 transition-colors"
-        title={collapsed ? 'Public Site' : undefined}
-      >
-        <Globe size={13} className="flex-shrink-0" />
-        {!collapsed && 'Public Site'}
-      </NavLink>
 
       {/* User footer */}
       <div className="p-3 border-t border-white/8">

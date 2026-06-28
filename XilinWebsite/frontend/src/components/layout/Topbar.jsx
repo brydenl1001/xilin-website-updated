@@ -14,6 +14,7 @@ const PAGE_TITLES = {
   '/applications':    'Applications',
   '/families':        'Families',
   '/timetable':       'Timetable',
+  '/calendar':        'Calendar',
   '/child-timetable': 'Timetable',
   '/my-classes':      'My Classes',
   '/payments':        'Payments',

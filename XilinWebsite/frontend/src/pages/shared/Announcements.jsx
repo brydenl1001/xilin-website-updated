@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
-import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters } from '../../lib/supabaseClient'
+import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react'
+import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters, uploadAnnouncementMedia } from '../../lib/supabaseClient'
 import { Badge, Button, Modal, Input, Select, Textarea, PageHeader, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { useAuth } from '../../context/AuthContext'
@@ -12,7 +12,8 @@ const SORT_OPTIONS = [
   { key: 'title', label: 'Title' },
   { key: 'category', label: 'Category' },
 ]
-const BLANK = { title: '', body: '', category: 'general', is_public: 'false', semester_id: '', media_url: '' }
+const BLANK = { title: '', body: '', category: 'general', is_public: 'false', semester_id: '', media_urls: [] }
+const imagesOf = (a) => (a.media_urls?.length ? a.media_urls : (a.media_url ? [a.media_url] : []))
 
 export default function Announcements() {
   const { user } = useAuth()
@@ -29,6 +30,25 @@ export default function Announcements() {
   const [deletingId, setDeletingId] = useState(null)
   const [form, setForm] = useState(BLANK)
   const [semesters, setSemesters] = useState([])
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+
+  const handleFile = async (e) => {
+    const files = Array.from(e.target.files || [])
+    if (!files.length) return
+    setUploading(true); setUploadError('')
+    try {
+      const urls = []
+      for (const file of files) urls.push(await uploadAnnouncementMedia(file))
+      setForm(f => ({ ...f, media_urls: [...f.media_urls, ...urls] }))
+    } catch (err) {
+      setUploadError(err.message)
+    } finally {
+      setUploading(false)
+      e.target.value = ''
+    }
+  }
+  const removeImage = (url) => setForm(f => ({ ...f, media_urls: f.media_urls.filter(u => u !== url) }))
 
   const load = () => {
     setLoading(true)
@@ -44,10 +64,10 @@ export default function Announcements() {
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
     useListControls(catFiltered, { searchKeys: ['title', 'body'], sortOptions: SORT_OPTIONS, initialDir: 'desc' })
 
-  const openNew = () => { setForm(BLANK); setEditingId(null); setShowModal(true) }
+  const openNew = () => { setForm(BLANK); setEditingId(null); setUploadError(''); setShowModal(true) }
   const openEdit = (ann) => {
-    setForm({ title: ann.title, body: ann.body, category: ann.category, is_public: ann.is_public ? 'true' : 'false', semester_id: ann.semester_id || '', media_url: ann.media_url || '' })
-    setEditingId(ann.id); setShowModal(true)
+    setForm({ title: ann.title, body: ann.body, category: ann.category, is_public: ann.is_public ? 'true' : 'false', semester_id: ann.semester_id || '', media_urls: imagesOf(ann) })
+    setEditingId(ann.id); setUploadError(''); setShowModal(true)
   }
   const setField = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
 
@@ -55,7 +75,7 @@ export default function Announcements() {
     if (!form.title || !form.body) return
     setSubmitting(true)
     try {
-      const payload = { title: form.title, body: form.body, category: form.category, is_public: form.is_public === 'true', semester_id: form.semester_id || null, media_url: form.media_url.trim() || null }
+      const payload = { title: form.title, body: form.body, category: form.category, is_public: form.is_public === 'true', semester_id: form.semester_id || null, media_urls: form.media_urls, media_url: form.media_urls[0] || null }
       if (editingId) await updateAnnouncement(editingId, payload)
       else await createAnnouncement({ ...payload, author_id: user.id })
       setShowModal(false); setForm(BLANK); setEditingId(null)
@@ -126,14 +146,21 @@ export default function Announcements() {
               </div>
             </div>
             <p className="text-xs text-slate-400">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
-            <p className="text-sm text-slate-500 line-clamp-1 mt-1">{ann.body}</p>
+            <p className="text-sm text-slate-500 line-clamp-2 mt-1">{ann.body}</p>
+            {imagesOf(ann).length > 0 && (
+              <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-thin">
+                {imagesOf(ann).map((url, i) => (
+                  <img key={i} src={url} alt="" className="h-24 w-32 flex-shrink-0 object-cover rounded-lg border border-slate-100" />
+                ))}
+              </div>
+            )}
           </div>
         ))}
         {!loading && !error && filtered.length === 0 && <p className="text-center text-slate-400 py-12 text-sm">No announcements found.</p>}
       </div>
 
       {/* View popup */}
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.title || 'Announcement'}>
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.title || 'Announcement'} maxWidth="max-w-2xl">
         {viewing && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -141,7 +168,13 @@ export default function Announcements() {
               <Badge variant={viewing.category}>{viewing.category}</Badge>
               <span className="text-xs text-slate-400">{viewing.profiles?.full_name || 'School Office'} · {viewing.published_at?.slice(0, 10)}</span>
             </div>
-            {viewing.media_url && <img src={viewing.media_url} alt="" className="rounded-lg max-h-72 w-full object-cover border border-slate-100" />}
+            {imagesOf(viewing).length > 0 && (
+              <div className="space-y-3">
+                {imagesOf(viewing).map((url, i) => (
+                  <img key={i} src={url} alt="" className="rounded-lg w-full max-h-80 object-cover border border-slate-100" />
+                ))}
+              </div>
+            )}
             <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{viewing.body}</p>
             {semesterName(viewing.semester_id) && <p className="text-xs text-slate-400">Semester: {semesterName(viewing.semester_id)}</p>}
           </div>
@@ -161,16 +194,36 @@ export default function Announcements() {
               <option value="false">Internal Only</option>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Select label="Semester (optional)" id="asem" value={form.semester_id} onChange={setField('semester_id')}>
-              <option value="">All / none</option>
-              {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </Select>
-            <Input label="Image URL (optional)" id="amedia" placeholder="https://…" value={form.media_url} onChange={setField('media_url')} />
+          <Select label="Semester (optional)" id="asem" value={form.semester_id} onChange={setField('semester_id')}>
+            <option value="">All / none</option>
+            {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </Select>
+
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1.5">Images (optional)</label>
+            {form.media_urls.length > 0 && (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                {form.media_urls.map(url => (
+                  <div key={url} className="relative">
+                    <img src={url} alt="" className="rounded-lg h-24 w-full object-cover border border-slate-200" />
+                    <button type="button" onClick={() => removeImage(url)}
+                      className="absolute top-1 right-1 bg-white/90 rounded-full p-0.5 text-slate-500 hover:text-red-500 shadow cursor-pointer" title="Remove image">
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <label className={`flex flex-col items-center justify-center gap-1.5 border-2 border-dashed rounded-lg py-5 transition-colors ${uploading ? 'border-slate-200 opacity-60 cursor-wait' : 'border-slate-200 hover:border-yellow-300 hover:bg-yellow-50/40 cursor-pointer'}`}>
+              <Upload size={18} className="text-slate-400" />
+              <span className="text-xs text-slate-500">{uploading ? 'Uploading…' : form.media_urls.length ? 'Add more images' : 'Click to upload image(s)'}</span>
+              <input type="file" accept="image/*" multiple className="hidden" onChange={handleFile} disabled={uploading} />
+            </label>
+            {uploadError && <p className="text-xs text-red-600 mt-1.5">{uploadError}</p>}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setShowModal(false)} disabled={submitting}>Cancel</Button>
-            <Button variant="gold" onClick={handleSave} disabled={submitting || !form.title || !form.body}>
+            <Button variant="gold" onClick={handleSave} disabled={submitting || uploading || !form.title || !form.body}>
               {submitting ? 'Saving…' : editingId ? 'Save Changes' : 'Publish'}
             </Button>
           </div>

@@ -40,12 +40,11 @@ export default function AdminDashboard() {
   }, [])
 
   const owing = families.filter(f => Number(f.balance) < 0).sort((a, b) => Number(a.balance) - Number(b.balance))
-  const totalOwed = owing.reduce((s, f) => s + Math.abs(Number(f.balance)), 0)
 
   const stats = [
     { label: 'Total Students', value: studentCount.toLocaleString(), delta: 'Member accounts', trend: 'up', Icon: Users },
     { label: 'Pending Applications', value: pending, delta: 'Awaiting review', trend: pending > 0 ? 'warn' : 'up', Icon: UserCheck },
-    { label: 'Outstanding', value: money(totalOwed), delta: `${owing.length} famil${owing.length === 1 ? 'y' : 'ies'} owing`, trend: owing.length > 0 ? 'warn' : 'up', Icon: Wallet },
+    { label: 'Families Owing', value: owing.length, delta: owing.length > 0 ? 'Need follow-up' : 'All settled', trend: owing.length > 0 ? 'warn' : 'up', Icon: Wallet },
     { label: 'Classes', value: classCount, delta: 'Scheduled', trend: 'up', Icon: GraduationCap },
   ]
 

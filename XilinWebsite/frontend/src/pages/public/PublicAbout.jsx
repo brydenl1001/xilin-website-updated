@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { schoolInfo, boardMembers } from '../../lib/mockData'
 import { listSemesters } from '../../lib/supabaseClient'
 import { Button } from '../../components/ui'
-import { ArrowRight, Mail, Globe, CalendarDays, Target, Users } from 'lucide-react'
+import { ArrowRight, Mail, Globe, CalendarDays, Target, Users, Phone } from 'lucide-react'
 
 const initials = (name) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
@@ -52,14 +52,23 @@ export default function PublicAbout() {
           <div className="text-center mb-10">
             <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-2">Leadership</p>
             <h2 className="font-display text-3xl text-slate-900">Our Board</h2>
+            <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto">Meet the volunteers who guide Xilin — reach out anytime with questions.</p>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 gap-8">
             {boardMembers.map((m, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 text-center">
-                <div className="w-16 h-16 rounded-full bg-navy text-yellow-400 font-display text-xl flex items-center justify-center mx-auto mb-3">{initials(m.name)}</div>
-                <p className="font-display text-lg text-slate-900">{m.name}</p>
-                <p className="text-xs text-yellow-600 uppercase tracking-wide mb-2">{m.role}</p>
-                <p className="text-xs text-slate-500 leading-relaxed">{m.bio}</p>
+              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
+                {m.photo
+                  ? <img src={m.photo} alt={m.name} className="w-28 h-28 rounded-2xl object-cover flex-shrink-0 border border-slate-200" />
+                  : <div className="w-28 h-28 rounded-2xl bg-navy text-yellow-400 font-display text-3xl flex items-center justify-center flex-shrink-0">{initials(m.name)}</div>}
+                <div className="min-w-0">
+                  <p className="font-display text-2xl text-slate-900">{m.name}</p>
+                  <p className="text-xs text-yellow-600 uppercase tracking-wide mb-3">{m.role}</p>
+                  <p className="text-sm text-slate-500 leading-relaxed mb-4">{m.bio}</p>
+                  <div className="flex flex-col gap-1.5 text-sm">
+                    {m.email && <a href={`mailto:${m.email}`} className="flex items-center justify-center sm:justify-start gap-2 text-slate-600 hover:text-yellow-700 transition-colors"><Mail size={14} className="text-yellow-600 flex-shrink-0" />{m.email}</a>}
+                    {m.phone && <span className="flex items-center justify-center sm:justify-start gap-2 text-slate-600"><Phone size={14} className="text-yellow-600 flex-shrink-0" />{m.phone}</span>}
+                  </div>
+                </div>
               </div>
             ))}
           </div>

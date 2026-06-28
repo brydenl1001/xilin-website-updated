@@ -26,6 +26,7 @@ import AdminReports     from '../pages/admin/Reports'
 import AdminFamilies    from '../pages/admin/Families'
 import AdminTimetable   from '../pages/admin/Timetable'
 import AdminUsers       from '../pages/admin/Users'
+import AdminCalendar    from '../pages/admin/Calendar'
 
 // Teacher pages
 import TeacherDashboard  from '../pages/teacher/Dashboard'
@@ -72,6 +73,7 @@ function PortalRoutes() {
         {/* Admin */}
         {role === 'admin' && <>
           <Route path="/timetable"   element={<AdminTimetable />} />
+          <Route path="/calendar"    element={<AdminCalendar />} />
           <Route path="/applications" element={<AdminApplications />} />
           <Route path="/courses"        element={<AdminCourses />} />
           <Route path="/manage-classes" element={<AdminClasses />} />

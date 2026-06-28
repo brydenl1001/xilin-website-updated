@@ -223,6 +223,31 @@ export async function updateOwnProfile(profileId, updates) {
   return data
 }
 
+/**
+ * Self-service: a signed-in staff member updates their own personal info.
+ * Routed through a SECURITY DEFINER RPC (there is no self-UPDATE RLS policy) that
+ * only ever touches a safe column whitelist — role/can_login can't be changed.
+ */
+export async function saveOwnProfileInfo({ full_name, phone, date_of_birth, address }) {
+  const { error } = await supabase.rpc('update_own_profile', {
+    p_full_name: full_name ?? null,
+    p_phone: phone ?? null,
+    p_date_of_birth: date_of_birth || null,
+    p_address: address ?? null,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/** Self-service: a family (household login) updates its own contact info. */
+export async function saveOwnFamilyInfo({ family_name, phone, address }) {
+  const { error } = await supabase.rpc('update_own_family', {
+    p_family_name: family_name ?? null,
+    p_phone: phone ?? null,
+    p_address: address ?? null,
+  })
+  if (error) throw new Error(error.message)
+}
+
 /** Admin: list all profiles, optionally filtered by role. RLS allows full access for admins. */
 export async function listProfiles(role = null) {
   let query = supabase.from('profiles').select('*')
@@ -411,6 +436,18 @@ export async function listPublicCourses() {
     .order('name', { ascending: true })
   if (error) throw error
   return data
+}
+
+/**
+ * Public: list running class instances for the active semester (the /classes
+ * catalog). Routed through a SECURITY DEFINER RPC so anonymous visitors can see
+ * live schedule + capacity without the classes/enrollments tables being readable
+ * by the anon role.
+ */
+export async function listPublicClasses() {
+  const { data, error } = await supabase.rpc('get_public_classes')
+  if (error) throw error
+  return data || []
 }
 
 /** Admin: create a new course template (code, name required; grade_level text + price optional). */
@@ -686,6 +723,41 @@ export async function listBalanceTransactions(familyId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// CALENDAR EVENTS (admin-managed, publicly visible)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Public: list all calendar events (oldest first). */
+export async function listCalendarEvents() {
+  const { data, error } = await supabase
+    .from('calendar_events')
+    .select('*')
+    .order('event_date', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Admin: create a calendar event. */
+export async function createCalendarEvent(event) {
+  const { data, error } = await supabase.from('calendar_events').insert(event).select().single()
+  if (error) throw error
+  return data
+}
+
+/** Admin: update a calendar event. */
+export async function updateCalendarEvent(id, updates) {
+  const { data, error } = await supabase.from('calendar_events').update(updates).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
+/** Admin: delete a calendar event. */
+export async function deleteCalendarEvent(id) {
+  const { error } = await supabase.from('calendar_events').delete().eq('id', id)
+  if (error) throw error
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ANNOUNCEMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -715,6 +787,21 @@ export async function listAnnouncements(category = null) {
   const { data, error } = await query.order('published_at', { ascending: false })
   if (error) throw error
   return data
+}
+
+/**
+ * Admin/teacher: upload an image/media file for an announcement to Storage and
+ * return its public URL. Stored in the public `announcement-media` bucket.
+ */
+export async function uploadAnnouncementMedia(file) {
+  const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
+  const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
+  const { error } = await supabase.storage
+    .from('announcement-media')
+    .upload(path, file, { cacheControl: '3600', upsert: false })
+  if (error) throw new Error(error.message)
+  const { data } = supabase.storage.from('announcement-media').getPublicUrl(path)
+  return data.publicUrl
 }
 
 /** Admin/teacher: create a new announcement. category: 'urgent'|'events'|'academics'|'general'. */

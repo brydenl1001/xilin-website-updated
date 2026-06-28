@@ -151,7 +151,7 @@ export default function AdminClasses() {
       </Card>
 
       {/* Class details */}
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.name || 'Class'}>
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.name || 'Class'} maxWidth="max-w-2xl">
         {viewing && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 bg-slate-50 rounded-xl p-4">

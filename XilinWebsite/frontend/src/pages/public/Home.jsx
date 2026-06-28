@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { schoolInfo } from '../../lib/mockData'
-import { listPublicAnnouncements, getPublicStats } from '../../lib/supabaseClient'
+import { listPublicAnnouncements, getPublicStats, getActiveSemester, listCalendarEvents } from '../../lib/supabaseClient'
 import { Button } from '../../components/ui'
+import EventCalendar, { semesterEvents } from '../../components/EventCalendar'
 import { ArrowRight, Mail, Globe, BookOpen, Users, GraduationCap } from 'lucide-react'
 const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
+
+const announcementImages = (a) => (a.media_urls?.length ? a.media_urls : (a.media_url ? [a.media_url] : []))
 
 export default function Home() {
   const [publicNews, setPublicNews] = useState([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0 })
+  const [calEvents, setCalEvents] = useState([])
+  const [activeSem, setActiveSem] = useState(null)
 
   useEffect(() => {
     listPublicAnnouncements()
@@ -19,7 +24,15 @@ export default function Home() {
     getPublicStats()
       .then(setStats)
       .catch(err => console.error('Failed to load stats:', err))
+    getActiveSemester().then(setActiveSem).catch(() => {})
+    listCalendarEvents().then(setCalEvents).catch(() => {})
   }, [])
+
+  const calendarEvents = [
+    ...semesterEvents(activeSem),
+    ...calEvents.map(e => ({ date: e.event_date, endDate: e.end_date, title: e.title, category: e.category, description: e.description })),
+  ]
+  const calInitial = activeSem?.registration_start || calEvents[0]?.event_date || undefined
 
   return (
     <div>
@@ -98,8 +111,22 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Latest News */}
+      {/* Calendar */}
       <section className="bg-slate-100/60 py-16 px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-1">Dates</p>
+              <h2 className="font-display text-2xl text-slate-900">School Calendar</h2>
+            </div>
+            {activeSem && <span className="text-sm text-slate-400">{activeSem.name}</span>}
+          </div>
+          <EventCalendar key={calInitial || 'cal'} events={calendarEvents} initialDate={calInitial} />
+        </div>
+      </section>
+
+      {/* Latest News */}
+      <section className="py-16 px-6">
         <div className="max-w-6xl mx-auto">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -115,19 +142,25 @@ export default function Home() {
               <p className="text-slate-400 text-sm col-span-3 text-center py-8">Loading announcements…</p>
             ) : publicNews.length === 0 ? (
               <p className="text-slate-400 text-sm col-span-3 text-center py-8">No announcements yet.</p>
-            ) : publicNews.map(ann => (
-              <div key={ann.id} className="bg-white rounded-xl p-5 border border-slate-200 hover:border-yellow-300 transition-colors cursor-pointer">
-                <div className="flex items-center justify-between mb-3">
-                  <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${CAT_COLOR[ann.category]}`}>
-                    {ann.category}
-                  </span>
-                  <span className="text-xs text-slate-400">{ann.published_at?.slice(0, 10)}</span>
+            ) : publicNews.map(ann => {
+              const imgs = announcementImages(ann)
+              return (
+              <Link key={ann.id} to="/news" className="bg-white rounded-xl border border-slate-200 hover:border-yellow-300 transition-colors cursor-pointer overflow-hidden flex flex-col">
+                {imgs[0] && <img src={imgs[0]} alt="" className="w-full h-40 object-cover" />}
+                <div className="p-5 flex-1">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${CAT_COLOR[ann.category]}`}>
+                      {ann.category}
+                    </span>
+                    <span className="text-xs text-slate-400">{ann.published_at?.slice(0, 10)}</span>
+                  </div>
+                  <h3 className="font-display text-[15px] text-slate-900 leading-snug mb-2">{ann.title}</h3>
+                  <p className="text-sm text-slate-500 line-clamp-2">{ann.body}</p>
+                  <p className="text-xs text-slate-400 mt-3">{ann.profiles?.full_name || 'School Office'}</p>
                 </div>
-                <h3 className="font-display text-[15px] text-slate-900 leading-snug mb-2">{ann.title}</h3>
-                <p className="text-sm text-slate-500 line-clamp-2">{ann.body}</p>
-                <p className="text-xs text-slate-400 mt-3">{ann.profiles?.full_name || 'School Office'}</p>
-              </div>
-            ))}
+              </Link>
+              )
+            })}
           </div>
         </div>
       </section>

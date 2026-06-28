@@ -36,14 +36,6 @@ export default function AdminTimetable() {
     <div className="max-w-5xl animate-fade-in">
       <PageHeader title="Timetable" subtitle="All classes by semester" />
 
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 flex items-start gap-3">
-        <AlertTriangle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-amber-700">
-          Day-by-day period scheduling isn't in the database yet — this lists classes by semester
-          instead of a weekly grid. Add a <code className="text-xs bg-amber-100 px-1 rounded">class_schedule</code> table to enable that.
-        </p>
-      </div>
-
       <div className="mb-5 max-w-xs">
         <Select label="Semester" id="sem" value={semesterId} onChange={e => setSemesterId(e.target.value)}>
           {semesters.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}

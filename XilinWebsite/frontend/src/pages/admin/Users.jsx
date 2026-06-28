@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
-import { Plus, KeyRound, Check } from 'lucide-react'
-import { listProfiles, listFamilies, createAccount } from '../../lib/supabaseClient'
+import { Plus, KeyRound, Check, ArrowLeft, Mail, Phone, Hash, BookOpen, GraduationCap, Users as UsersIcon } from 'lucide-react'
+import { listProfiles, listFamilies, createAccount, listClasses, getOwnEnrollments } from '../../lib/supabaseClient'
 import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 
 const ROLE_VARIANT = { admin: 'navy', teacher: 'academics', student: 'success', parent: 'gold' }
 const SORT_OPTIONS = [{ key: 'full_name', label: 'Name' }, { key: 'role', label: 'Role' }]
 const ROLE_OPTIONS = ['admin', 'teacher', 'student']
+const fmtTime = (t) => t ? t.slice(0, 5) : ''
+const money = (n) => `$${Number(n || 0).toFixed(2)}`
 
 const KINDS = [
   { val: 'staff',  label: 'Staff login',   hint: 'Admin or teacher who signs in directly' },
@@ -18,9 +20,11 @@ const BLANK = { kind: 'staff', full_name: '', family_name: '', email: '', phone:
 export default function AdminUsers() {
   const [profiles, setProfiles] = useState([])
   const [families, setFamilies] = useState([])
+  const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
+  const [selectedUser, setSelectedUser] = useState(null)
 
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -31,9 +35,10 @@ export default function AdminUsers() {
   const load = async () => {
     setLoading(true)
     try {
-      const [profileData, familyData] = await Promise.all([listProfiles(), listFamilies()])
+      const [profileData, familyData, classData] = await Promise.all([listProfiles(), listFamilies(), listClasses()])
       setProfiles(profileData)
       setFamilies(familyData)
+      setClasses(classData)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -69,7 +74,10 @@ export default function AdminUsers() {
       id: m.profiles?.id,
       full_name: m.profiles?.full_name,
       role: m.profiles?.role || m.relationship,
+      phone: m.profiles?.phone || null,
+      familyId: f.id,
       familyName: f.family_name,
+      familyCode: f.family_code,
       email: f.email,
     }))
   )
@@ -87,6 +95,10 @@ export default function AdminUsers() {
   allUsers.forEach(u => { if (counts[u.role] !== undefined) counts[u.role]++ })
 
   const memberRoleValue = form.role === 'admin' || form.role === 'teacher' ? 'student' : form.role
+
+  if (selectedUser) {
+    return <UserDetail user={selectedUser} families={families} classes={classes} onBack={() => setSelectedUser(null)} />
+  }
 
   return (
     <div className="max-w-5xl animate-fade-in">
@@ -113,14 +125,15 @@ export default function AdminUsers() {
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
-          <Table headers={['User', 'Role', 'Email / Family']}>
+          <Table headers={['User', 'Role', 'Email / Family', '']}>
             {filtered.length === 0 ? (
               <Tr><Td className="py-12 text-center text-slate-400">No users found.</Td></Tr>
             ) : filtered.map((u, i) => (
-              <Tr key={u.id || i}>
+              <Tr key={u.id || i} onClick={() => setSelectedUser(u)}>
                 <Td><p className="font-medium text-slate-900">{u.full_name}</p></Td>
                 <Td><Badge variant={ROLE_VARIANT[u.role]}>{u.role}</Badge></Td>
                 <Td className="text-slate-500 text-xs">{u.familyName || u.email}</Td>
+                <Td><span className="text-xs text-yellow-600">View →</span></Td>
               </Tr>
             ))}
           </Table>
@@ -218,6 +231,128 @@ export default function AdminUsers() {
           </div>
         )}
       </Modal>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+function UserDetail({ user, families, classes, onBack }) {
+  const isTeacher = user.role === 'teacher'
+  const isAdmin = user.role === 'admin'
+  const isMember = user.role === 'student' || user.role === 'parent'
+
+  const family = isMember ? families.find(f => (f.family_members || []).some(m => m.profiles?.id === user.id)) : null
+  const teaching = isTeacher ? classes.filter(c => (c.class_teachers || []).some(ct => ct.profiles?.id === user.id)) : []
+
+  const [enrollments, setEnrollments] = useState([])
+  const [loading, setLoading] = useState(isMember)
+
+  useEffect(() => {
+    if (!isMember) return
+    let live = true
+    setLoading(true)
+    getOwnEnrollments(user.id)
+      .then(e => { if (live) setEnrollments(e) })
+      .catch(err => console.error(err))
+      .finally(() => { if (live) setLoading(false) })
+    return () => { live = false }
+  }, [user.id, isMember])
+
+  const enrolled = enrollments.filter(e => e.status === 'enrolled')
+
+  return (
+    <div className="max-w-4xl animate-fade-in">
+      <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4 cursor-pointer transition-colors">
+        <ArrowLeft size={15} /> Back to users
+      </button>
+
+      {/* Header */}
+      <div className="bg-navy rounded-2xl p-6 mb-5 text-white">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <p className="font-display text-2xl">{user.full_name}</p>
+              <Badge variant={ROLE_VARIANT[user.role]}>{user.role}</Badge>
+            </div>
+            <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-300">
+              {user.email && user.email !== '—' && (
+                <span className="flex items-center gap-1.5"><Mail size={13} className="text-yellow-400" />{user.email}</span>
+              )}
+              {user.phone && <span className="flex items-center gap-1.5"><Phone size={13} className="text-yellow-400" />{user.phone}</span>}
+              {family && (
+                <span className="flex items-center gap-1.5"><UsersIcon size={13} className="text-yellow-400" />{family.family_name}</span>
+              )}
+              {family?.family_code && (
+                <span className="flex items-center gap-1.5"><Hash size={13} className="text-yellow-400" />ID {family.family_code}</span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Role-specific body */}
+      {isAdmin && (
+        <Card><p className="text-sm text-slate-500 py-2 text-center">Administrator account with full portal access.</p></Card>
+      )}
+
+      {isTeacher && (
+        <>
+          <h3 className="font-display text-lg text-slate-900 mb-3 flex items-center gap-2"><GraduationCap size={18} className="text-yellow-600" /> Classes Taught</h3>
+          {teaching.length === 0 ? (
+            <Card><p className="text-sm text-slate-400 py-4 text-center">Not assigned to any classes yet.</p></Card>
+          ) : (
+            <div className="space-y-2">
+              {teaching.map(c => {
+                const role = (c.class_teachers || []).find(ct => ct.profiles?.id === user.id)?.role
+                return (
+                  <Card key={c.id} className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-medium text-slate-900">{c.name}</p>
+                      <p className="text-xs text-slate-400">
+                        {c.courses?.name || '—'}
+                        {c.day_of_week ? ` · ${c.day_of_week} ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}` : ''}
+                        {c.room ? ` · ${c.room}` : ''}
+                      </p>
+                    </div>
+                    {role && <Badge variant={role === 'lead' ? 'gold' : 'default'}>{role}</Badge>}
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {isMember && (
+        <>
+          <h3 className="font-display text-lg text-slate-900 mb-3 flex items-center gap-2"><BookOpen size={18} className="text-yellow-600" /> Enrolled Classes</h3>
+          {loading ? (
+            <Card><p className="text-sm text-slate-400 py-4 text-center">Loading classes…</p></Card>
+          ) : enrolled.length === 0 ? (
+            <Card><p className="text-sm text-slate-400 py-4 text-center">Not enrolled in any classes.</p></Card>
+          ) : (
+            <div className="space-y-2">
+              {enrolled.map(e => (
+                <Card key={e.id} className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-900">{e.classes?.name || e.classes?.courses?.name || 'Class'}</p>
+                    <p className="text-xs text-slate-400">
+                      {e.classes?.courses?.name || '—'}
+                      {e.classes?.day_of_week ? ` · ${e.classes.day_of_week} ${fmtTime(e.classes.start_time)}${e.classes.end_time ? `–${fmtTime(e.classes.end_time)}` : ''}` : ''}
+                    </p>
+                  </div>
+                  {e.price_charged != null && <span className="text-sm font-medium text-yellow-700">{money(e.price_charged)}</span>}
+                </Card>
+              ))}
+            </div>
+          )}
+          {family && (
+            <p className="text-xs text-slate-400 mt-4">
+              This member belongs to <span className="font-medium text-slate-600">{family.family_name}</span> and signs in through the family account — manage enrollments and balance from the Families page.
+            </p>
+          )}
+        </>
+      )}
     </div>
   )
 }

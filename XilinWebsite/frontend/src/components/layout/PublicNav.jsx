@@ -1,7 +1,8 @@
 import { Link, useLocation } from 'react-router-dom'
 import { useState } from 'react'
-import { Menu, X } from 'lucide-react'
+import { Menu, X, LayoutDashboard } from 'lucide-react'
 import { Button } from '../ui'
+import { useAuth } from '../../context/AuthContext'
 
 const NAV_LINKS = [
   { label: 'Home',          to: '/' },
@@ -14,6 +15,7 @@ const NAV_LINKS = [
 export default function PublicNav() {
   const [open, setOpen] = useState(false)
   const { pathname } = useLocation()
+  const { user } = useAuth()
 
   return (
     <nav className="bg-white border-b border-slate-200 sticky top-0 z-40">
@@ -41,12 +43,20 @@ export default function PublicNav() {
         </div>
 
         <div className="hidden md:flex items-center gap-3">
-          <Link to="/login">
-            <Button variant="outline" size="sm">Sign In</Button>
-          </Link>
-          <Link to="/enroll">
-            <Button variant="gold" size="sm">Apply Now</Button>
-          </Link>
+          {user ? (
+            <Link to="/dashboard">
+              <Button variant="gold" size="sm"><LayoutDashboard size={14} /> Dashboard</Button>
+            </Link>
+          ) : (
+            <>
+              <Link to="/login">
+                <Button variant="outline" size="sm">Sign In</Button>
+              </Link>
+              <Link to="/enroll">
+                <Button variant="gold" size="sm">Apply Now</Button>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -69,8 +79,14 @@ export default function PublicNav() {
             </Link>
           ))}
           <div className="flex gap-2 pt-3 border-t border-slate-100 mt-2">
-            <Link to="/login" className="flex-1"><Button variant="outline" size="sm" className="w-full">Sign In</Button></Link>
-            <Link to="/enroll" className="flex-1"><Button variant="gold" size="sm" className="w-full">Apply</Button></Link>
+            {user ? (
+              <Link to="/dashboard" onClick={() => setOpen(false)} className="flex-1"><Button variant="gold" size="sm" className="w-full"><LayoutDashboard size={14} /> Dashboard</Button></Link>
+            ) : (
+              <>
+                <Link to="/login" className="flex-1"><Button variant="outline" size="sm" className="w-full">Sign In</Button></Link>
+                <Link to="/enroll" className="flex-1"><Button variant="gold" size="sm" className="w-full">Apply</Button></Link>
+              </>
+            )}
           </div>
         </div>
       )}
