@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Download, AlertCircle } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import { listAllTransactions, listFamilies, listClasses, getClassRoster } from '../../lib/supabaseClient'
 import { Button, Card, PageHeader, Table, Tr, Td, Select } from '../../components/ui'
-
-const money = (n) => `${Number(n) < 0 ? '-' : ''}$${Math.abs(Number(n || 0)).toFixed(2)}`
+import { money } from '../../lib/format'
 
 function downloadCSV(filename, rows) {
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
@@ -16,6 +16,7 @@ function downloadCSV(filename, rows) {
 }
 
 export default function AdminReports() {
+  const navigate = useNavigate()
   const [txns, setTxns] = useState([])
   const [families, setFamilies] = useState([])
   const [classes, setClasses] = useState([])
@@ -93,7 +94,7 @@ export default function AdminReports() {
         ) : (
           <Table headers={['Family', 'ID', 'Contact', 'Owed']}>
             {owing.map(f => (
-              <Tr key={f.id}>
+              <Tr key={f.id} onClick={() => navigate(`/families/${f.id}`)}>
                 <Td><span className="font-medium text-slate-900">{f.family_name}</span></Td>
                 <Td className="font-mono text-xs text-slate-500">{f.family_code}</Td>
                 <Td className="text-slate-500 text-xs">{f.email}{f.phone ? ` · ${f.phone}` : ''}</Td>
@@ -122,8 +123,8 @@ export default function AdminReports() {
           ) : (
             <Table headers={['Member', 'Role', 'Family', 'Guardian Contact']}>
               {roster.map(r => (
-                <Tr key={r.member_id}>
-                  <Td className="font-medium text-slate-900">{r.member_name}</Td>
+                <Tr key={r.member_id} onClick={() => navigate(`/users/${r.member_id}`)}>
+                  <Td><span className="font-medium text-slate-900">{r.member_name}</span></Td>
                   <Td className="capitalize text-slate-600">{r.member_role}</Td>
                   <Td className="text-slate-600">{r.family_name || '—'}</Td>
                   <Td className="text-slate-500 text-xs">{[r.email, r.phone].filter(Boolean).join(' · ') || '—'}</Td>

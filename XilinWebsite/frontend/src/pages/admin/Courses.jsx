@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil } from 'lucide-react'
 import { listCourses, createCourse, updateCourse } from '../../lib/supabaseClient'
-import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Textarea, ListToolbar } from '../../components/ui'
+import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
+import { SUBJECT_AREAS } from '../../lib/categories'
 
 const BLANK = { code: '', name: '', subject_area: '', grade_level: '', price: '', materials_fee: '', description: '' }
 const SORT_OPTIONS = [
@@ -103,7 +104,13 @@ export default function AdminCourses() {
           </div>
           <Input label="Name" id="name" placeholder="e.g. Beginner Mandarin" value={form.name} onChange={set('name')} required />
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Subject Area" id="subject" placeholder="e.g. Languages" value={form.subject_area} onChange={set('subject_area')} />
+            <Select label="Subject Area" id="subject" value={form.subject_area} onChange={set('subject_area')}>
+              <option value="">Select a subject…</option>
+              {form.subject_area && !SUBJECT_AREAS.includes(form.subject_area) && (
+                <option value={form.subject_area}>{form.subject_area} (current)</option>
+              )}
+              {SUBJECT_AREAS.map(s => <option key={s} value={s}>{s}</option>)}
+            </Select>
             <Input label="Grade Range" id="grade" placeholder="e.g. All ages, Grades 3-5" value={form.grade_level} onChange={set('grade_level')} />
           </div>
           <Textarea label="Description" id="desc" placeholder="What this class covers..." value={form.description} onChange={set('description')} rows={3} />

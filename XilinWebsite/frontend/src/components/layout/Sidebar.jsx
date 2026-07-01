@@ -18,7 +18,6 @@ const NAV_CONFIG = {
       { label: 'Semesters',    to: '/semesters',      icon: Clock },
     ]},
     { section: 'Academic', items: [
-      { label: 'Timetable',    to: '/timetable',  icon: Clock },
       { label: 'Calendar',     to: '/calendar',   icon: CalendarDays },
     ]},
     { section: 'Management', items: [
@@ -50,7 +49,8 @@ const NAV_CONFIG = {
       { label: 'Announcements', to: '/announcements', icon: Megaphone },
     ]},
     { section: 'Family', items: [
-      { label: 'Timetable',    to: '/child-timetable',   icon: Clock },
+      { label: 'Members & Classes', to: '/members',          icon: Users },
+      { label: 'Timetable',         to: '/child-timetable',  icon: Clock },
     ]},
     { section: 'Finance', items: [
       { label: 'Payments',     to: '/payments',    icon: CreditCard },

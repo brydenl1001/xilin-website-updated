@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react'
-import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters, uploadAnnouncementMedia } from '../../lib/supabaseClient'
+import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters, uploadAnnouncementMedia, announcementImages as imagesOf } from '../../lib/supabaseClient'
 import { Badge, Button, Modal, Input, Select, Textarea, PageHeader, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { useAuth } from '../../context/AuthContext'
@@ -13,7 +13,6 @@ const SORT_OPTIONS = [
   { key: 'category', label: 'Category' },
 ]
 const BLANK = { title: '', body: '', category: 'general', is_public: 'false', semester_id: '', media_urls: [] }
-const imagesOf = (a) => (a.media_urls?.length ? a.media_urls : (a.media_url ? [a.media_url] : []))
 
 export default function Announcements() {
   const { user } = useAuth()

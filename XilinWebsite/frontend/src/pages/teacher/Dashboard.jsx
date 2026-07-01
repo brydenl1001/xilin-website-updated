@@ -4,8 +4,7 @@ import { listMyClasses, listAnnouncements } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-
-const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
+import { CAT_DOT } from '../../lib/categories'
 
 export default function TeacherDashboard() {
   const { user } = useAuth()
@@ -61,13 +60,14 @@ export default function TeacherDashboard() {
           ) : (
             <div className="space-y-2">
               {classes.map(({ classes: c, role }) => (
-                <div key={c.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors">
+                <Link key={c.id} to={`/class/${c.id}`}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                   <div>
                     <p className="text-sm font-medium text-slate-900">{c.name}</p>
                     <p className="text-xs text-slate-400">{c.courses?.name}</p>
                   </div>
                   <Badge variant="default">{role}</Badge>
-                </div>
+                </Link>
               ))}
             </div>
           )}

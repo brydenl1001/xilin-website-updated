@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect } from 'react'
-import { supabase } from '../lib/supabase'
-import { resolveCurrentIdentity, signIn as supaSignIn, signOut as supaSignOut } from '../lib/supabaseClient'
+import { supabase, resolveCurrentIdentity, signIn as supaSignIn, signOut as supaSignOut } from '../lib/supabaseClient'
 
 const AuthContext = createContext(null)
 

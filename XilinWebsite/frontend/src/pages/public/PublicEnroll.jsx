@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle, ArrowRight, Users, UserPlus, ShieldCheck } from 'lucide-react'
+import { CheckCircle, ArrowRight, Users, UserPlus, ShieldCheck, CalendarDays } from 'lucide-react'
 import { Button, Input, Textarea } from '../../components/ui'
-import { listPublicCourses, submitEnrollmentApplication } from '../../lib/supabaseClient'
+import { listPublicCourses, submitEnrollmentApplication, getActiveSemester } from '../../lib/supabaseClient'
 
 const STEPS = ['Your Details', 'Family', 'Classes', 'Review & Submit']
 
@@ -39,6 +39,7 @@ export default function PublicEnroll() {
 
   const [courses, setCourses] = useState([])
   const [coursesError, setCoursesError] = useState('')
+  const [semester, setSemester] = useState(null)
 
   const [form, setForm] = useState({
     applicant_type: 'parent',   // 'parent' | 'student'
@@ -61,6 +62,7 @@ export default function PublicEnroll() {
     listPublicCourses()
       .then(setCourses)
       .catch(err => setCoursesError(err.message))
+    getActiveSemester().then(setSemester).catch(() => {})
   }, [])
 
   const toggleClass = (id) => setForm(f => ({
@@ -164,6 +166,11 @@ export default function PublicEnroll() {
       <div className="text-center mb-10">
         <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-2">Admissions</p>
         <h1 className="font-display text-4xl text-slate-900 mb-3">Apply to Enroll</h1>
+        {semester && (
+          <p className="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-800 bg-yellow-50 border border-yellow-200 rounded-full px-3 py-1 mb-3">
+            <CalendarDays size={13} /> Enrolling for {semester.name}{semester.academic_year ? ` · ${semester.academic_year}` : ''}
+          </p>
+        )}
         <p className="text-slate-500">Students and parents are both welcome to take classes. Complete the form below — every application is reviewed by an administrator before it's approved.</p>
       </div>
 
@@ -271,8 +278,8 @@ export default function PublicEnroll() {
         {/* Step 2 — Classes */}
         {step === 2 && (
           <div className="animate-fade-in">
-            <h3 className="font-display text-lg text-slate-900 mb-1">Choose Classes</h3>
-            <p className="text-sm text-slate-500 mb-4">Select the classes you'd like to enroll in. You can change these later with the school office.</p>
+            <h3 className="font-display text-lg text-slate-900 mb-1">Choose Classes{semester ? ` · ${semester.name}` : ''}</h3>
+            <p className="text-sm text-slate-500 mb-4">Select the classes you'd like to enroll in{semester ? ` for ${semester.name}` : ''}. You can change these later with the school office.</p>
 
             {coursesError && <p className="text-sm text-red-500">Failed to load catalog: {coursesError}</p>}
             {!coursesError && courses.length === 0 && (
@@ -322,6 +329,7 @@ export default function PublicEnroll() {
                 ['Phone', form.phone || 'Not provided'],
                 ...(form.applicant_type === 'student' ? [['Date of Birth', form.dob || 'Not provided']] : []),
                 ['Family', form.family_mode === 'existing' ? `Join existing (ID: ${form.family_id})` : `New family — ${form.family_name}`],
+                ...(semester ? [['Term', `${semester.name}${semester.academic_year ? ` · ${semester.academic_year}` : ''}`]] : []),
                 ['Classes', selectedCourses.length ? selectedCourses.map(c => c.name).join(', ') : 'None selected yet'],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-200 last:border-0">

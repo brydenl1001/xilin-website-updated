@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, X, Mail, Phone, Users, BookOpen, Pencil, Trash2, Wallet, Hash } from 'lucide-react'
 import {
-  listFamilies, listClasses, getOwnEnrollments, listBalanceTransactions,
+  listFamilies, listClasses, getEnrollmentsForMembers, listBalanceTransactions,
   enrollMember, dropMember, recordPayment, createAccount, getClassCounts,
   updateFamilyMember, removeFamilyMemberFully,
+  approvePendingEnrollment, rejectPendingEnrollment,
 } from '../../lib/supabaseClient'
 
 // Two classes conflict if same day with overlapping time windows.
@@ -12,7 +14,9 @@ const timesOverlap = (a, b) =>
   a.start_time && a.end_time && b.start_time && b.end_time &&
   a.start_time < b.end_time && b.start_time < a.end_time
 import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar } from '../../components/ui'
+import ClassPicker from '../../components/ClassPicker'
 import { useListControls } from '../../hooks/useListControls'
+import { money, fmtTime } from '../../lib/format'
 
 const ROLE_VARIANT = { parent: 'gold', student: 'success', guardian: 'navy' }
 const METHOD_LABEL = { enrollment: 'Enrollment', drop_credit: 'Drop credit', cash: 'Cash payment', online: 'Online payment', adjustment: 'Adjustment' }
@@ -22,15 +26,14 @@ const SORT_OPTIONS = [
   { key: 'family_code', label: 'Family ID' },
   { key: 'created_at', label: 'Created' },
 ]
-const fmtTime = (t) => t ? t.slice(0, 5) : ''
-const money = (n) => `${Number(n) < 0 ? '-' : ''}$${Math.abs(Number(n || 0)).toFixed(2)}`
 
 export default function AdminFamilies() {
+  const { id } = useParams()
+  const navigate = useNavigate()
   const [families, setFamilies] = useState([])
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [selectedId, setSelectedId] = useState(null)
 
   const [counts, setCounts] = useState({})
   const load = async () => {
@@ -51,9 +54,18 @@ export default function AdminFamilies() {
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
     useListControls(families, { searchKeys: ['family_name', 'email', 'family_code'], sortOptions: SORT_OPTIONS })
 
-  const selected = families.find(f => f.id === selectedId)
-  if (selected) {
-    return <FamilyDetail family={selected} classes={classes} counts={counts} onBack={() => setSelectedId(null)} onChanged={load} />
+  const selected = families.find(f => f.id === id)
+  if (id) {
+    if (loading) return <div className="max-w-5xl"><p className="py-12 text-center text-slate-400 text-sm">Loading…</p></div>
+    if (selected) {
+      return <FamilyDetail family={selected} classes={classes} counts={counts} onBack={() => navigate('/families')} onChanged={load} />
+    }
+    return (
+      <div className="max-w-5xl">
+        <button onClick={() => navigate('/families')} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4 cursor-pointer"><ArrowLeft size={15} /> Back to families</button>
+        <Card><p className="py-8 text-center text-slate-400 text-sm">Family not found.</p></Card>
+      </div>
+    )
   }
 
   const owingCount = families.filter(f => Number(f.balance) < 0).length
@@ -83,7 +95,7 @@ export default function AdminFamilies() {
             ) : filtered.map(f => {
               const owes = Number(f.balance) < 0
               return (
-                <Tr key={f.id} onClick={() => setSelectedId(f.id)}>
+                <Tr key={f.id} onClick={() => navigate(`/families/${f.id}`)}>
                   <Td>
                     <p className="font-medium text-slate-900">{f.family_name}</p>
                     <p className="text-xs text-slate-400">{f.email}</p>
@@ -116,6 +128,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   const [editForm, setEditForm] = useState({ full_name: '', role: 'student' })
   const [editError, setEditError] = useState('')
   const [payOpen, setPayOpen] = useState(false)
+  const [pickingFor, setPickingFor] = useState(null)
   const [payForm, setPayForm] = useState({ amount: '', note: '' })
   const [payError, setPayError] = useState('')
 
@@ -125,13 +138,11 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   const reload = async () => {
     setLoading(true)
     try {
-      const [entries, txns] = await Promise.all([
-        Promise.all(members.map(async (m) => [m.id, await getOwnEnrollments(m.id)])),
+      const [enrollMap, txns] = await Promise.all([
+        getEnrollmentsForMembers(members.map(m => m.id)),
         listBalanceTransactions(family.id),
       ])
-      const e = {}
-      entries.forEach(([id, enr]) => { e[id] = enr })
-      setEnrollByMember(e)
+      setEnrollByMember(enrollMap)
       setLedger(txns)
     } catch (err) {
       console.error(err)
@@ -166,6 +177,20 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
     } finally {
       setBusy(false)
     }
+  }
+
+  const approveRequest = async (enrollmentId) => {
+    setBusy(true)
+    try { await approvePendingEnrollment(enrollmentId); await refreshAll() }
+    catch (err) { alert(err.message) }
+    finally { setBusy(false) }
+  }
+  const rejectRequest = async (enrollmentId) => {
+    if (!window.confirm('Reject this class request?')) return
+    setBusy(true)
+    try { await rejectPendingEnrollment(enrollmentId); await refreshAll() }
+    catch (err) { alert(err.message) }
+    finally { setBusy(false) }
   }
 
   const removeClass = async (memberId, enrollmentId, className) => {
@@ -242,7 +267,22 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
     }
   }
 
-  const enrolledClassIds = (memberId) => new Set((enrollByMember[memberId] || []).filter(e => e.status === 'enrolled').map(e => e.class_id))
+
+  if (pickingFor) {
+    const taken = new Set((enrollByMember[pickingFor.id] || []).filter(e => ['enrolled', 'pending'].includes(e.status)).map(e => e.class_id))
+    const available = classes.filter(c => !taken.has(c.id))
+    return (
+      <ClassPicker
+        memberName={pickingFor.full_name}
+        classes={available}
+        counts={counts}
+        mode="enroll"
+        busy={busy}
+        onPick={(classId) => addClass(pickingFor.id, classId)}
+        onBack={() => setPickingFor(null)}
+      />
+    )
+  }
 
   return (
     <div className="max-w-4xl animate-fade-in">
@@ -282,7 +322,8 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
         <div className="space-y-3 mb-6">
           {members.map(m => {
             const enrolled = (enrollByMember[m.id] || []).filter(e => e.status === 'enrolled')
-            const taken = enrolledClassIds(m.id)
+            const pending = (enrollByMember[m.id] || []).filter(e => e.status === 'pending')
+            const taken = new Set([...enrolled, ...pending].map(e => e.class_id))
             const available = classes.filter(c => !taken.has(c.id))
             return (
               <Card key={m.id}>
@@ -323,19 +364,23 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
                       </div>
                     ) : <p className="text-xs text-slate-400 mb-3">Not enrolled in any classes.</p>}
 
-                    <select disabled={busy || available.length === 0} value=""
-                      onChange={e => { addClass(m.id, e.target.value); e.target.value = '' }}
-                      className="text-xs border border-slate-200 rounded-lg px-2 h-8 bg-white outline-none text-slate-600 cursor-pointer disabled:opacity-50 max-w-[280px]">
-                      <option value="" disabled>{available.length ? '+ Enroll in a class…' : 'No more classes available'}</option>
-                      {available.map(c => {
-                        const full = c.max_students != null && (counts[c.id] || 0) >= c.max_students
-                        return (
-                          <option key={c.id} value={c.id} disabled={full}>
-                            {c.name}{c.courses?.price != null ? ` — ${money(c.courses.price)}` : ''}{full ? ' — FULL' : ''}
-                          </option>
-                        )
-                      })}
-                    </select>
+                    {pending.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {pending.map(e => (
+                          <span key={e.id} className="inline-flex items-center gap-2 text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-full pl-3 pr-1.5 py-1">
+                            <span>Request: {e.classes?.name || 'Class'}{e.price_charged != null ? ` · ${money(e.price_charged)}` : ''}</span>
+                            <button onClick={() => approveRequest(e.id)} disabled={busy}
+                              className="px-1.5 rounded-full bg-green-100 text-green-700 hover:bg-green-200 cursor-pointer disabled:opacity-40" title="Approve">Approve</button>
+                            <button onClick={() => rejectRequest(e.id)} disabled={busy}
+                              className="px-1.5 rounded-full bg-red-100 text-red-600 hover:bg-red-200 cursor-pointer disabled:opacity-40" title="Reject">Reject</button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <Button variant="outline" size="sm" disabled={busy || available.length === 0} onClick={() => setPickingFor(m)}>
+                      <Plus size={13} /> {available.length ? 'Enroll in a class' : 'No more classes available'}
+                    </Button>
                   </>
                 )}
               </Card>

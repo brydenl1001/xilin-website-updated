@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { Wallet, CreditCard, RefreshCw } from 'lucide-react'
 import { getOwnFamily, listBalanceTransactions, recordPayment } from '../../lib/supabaseClient'
-import { Button, Card, Input, PageHeader, Table, Tr, Td } from '../../components/ui'
+import { Button, Card, PageHeader, Table, Tr, Td } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { money } from '../../lib/format'
 
-const METHOD_LABEL = { enrollment: 'Enrollment', drop_credit: 'Drop credit', cash: 'Cash payment', online: 'Online payment', adjustment: 'Adjustment' }
-const money = (n) => `${Number(n) < 0 ? '-' : ''}$${Math.abs(Number(n || 0)).toFixed(2)}`
+const METHOD_LABEL = { enrollment: 'Class purchase', drop_credit: 'Drop credit', cash: 'Cash payment', online: 'Online payment', adjustment: 'Adjustment' }
+const PAYMENTS_BUCKET = 'Payments & Adjustments'
 
 export default function FamilyPayments() {
   const { user } = useAuth()
@@ -19,10 +20,7 @@ export default function FamilyPayments() {
   const load = async () => {
     setLoading(true)
     try {
-      const [fam, txns] = await Promise.all([
-        getOwnFamily(user.id),
-        listBalanceTransactions(user.id),
-      ])
+      const [fam, txns] = await Promise.all([getOwnFamily(user.id), listBalanceTransactions(user.id)])
       setFamily(fam)
       setLedger(txns)
     } catch (err) {
@@ -51,9 +49,19 @@ export default function FamilyPayments() {
     }
   }
 
+  // Group transactions by semester (class purchases/credits) with a separate
+  // bucket for account-level payments/adjustments that aren't tied to a class.
+  const groups = []
+  const byKey = {}
+  ledger.forEach(t => {
+    const key = t.classes?.semesters?.name || PAYMENTS_BUCKET
+    if (!byKey[key]) { byKey[key] = []; groups.push(key) }
+    byKey[key].push(t)
+  })
+
   return (
     <div className="max-w-3xl animate-fade-in">
-      <PageHeader title="Payments" subtitle="Your family balance and history" />
+      <PageHeader title="Payments" subtitle="Your family balance, payments, and class purchases" />
 
       {loading ? (
         <p className="text-slate-400 text-sm text-center py-12">Loading…</p>
@@ -95,26 +103,39 @@ export default function FamilyPayments() {
             <p className="text-[11px] text-white/30 mt-3">🧪 Demo mode — payments are recorded directly. A real card processor will be connected here.</p>
           </div>
 
-          {/* Ledger */}
-          <h3 className="font-display text-lg text-slate-900 mb-3">Transaction History</h3>
-          <Card className="!p-0 overflow-hidden">
-            {ledger.length === 0 ? (
-              <p className="py-10 text-center text-slate-400 text-sm">No transactions yet.</p>
-            ) : (
-              <Table headers={['Date', 'Type', 'Detail', 'Amount']}>
-                {ledger.map(t => (
-                  <Tr key={t.id}>
-                    <Td className="text-slate-400 text-xs whitespace-nowrap">{t.created_at?.slice(0, 10)}</Td>
-                    <Td className="text-slate-700">{METHOD_LABEL[t.method] || t.method}</Td>
-                    <Td className="text-slate-500 text-xs">
-                      {[t.member?.full_name, t.classes?.name, t.note].filter(Boolean).join(' · ') || '—'}
-                    </Td>
-                    <Td><span className={`font-semibold ${Number(t.amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>{money(t.amount)}</span></Td>
-                  </Tr>
-                ))}
-              </Table>
-            )}
-          </Card>
+          {/* Per-semester detail */}
+          <h3 className="font-display text-lg text-slate-900 mb-3">Activity by Semester</h3>
+          {ledger.length === 0 ? (
+            <Card><p className="py-10 text-center text-slate-400 text-sm">No payments or class purchases yet.</p></Card>
+          ) : (
+            <div className="space-y-5">
+              {groups.map(key => {
+                const items = byKey[key]
+                const subtotal = items.reduce((s, t) => s + Number(t.amount), 0)
+                return (
+                  <div key={key}>
+                    <div className="flex items-center justify-between mb-1.5 px-1">
+                      <h4 className="font-display text-base text-slate-800">{key}</h4>
+                      <span className={`text-xs font-medium ${subtotal < 0 ? 'text-red-600' : 'text-green-600'}`}>Net {money(subtotal)}</span>
+                    </div>
+                    <Card className="!p-0 overflow-hidden">
+                      <Table headers={['Date', 'Member', 'Class / Detail', 'Type', 'Amount']}>
+                        {items.map(t => (
+                          <Tr key={t.id}>
+                            <Td className="text-slate-400 text-xs whitespace-nowrap">{t.created_at?.slice(0, 10)}</Td>
+                            <Td className="text-slate-600 text-xs">{t.member?.full_name || '—'}</Td>
+                            <Td className="text-slate-600 text-xs">{t.classes?.name || t.note || '—'}</Td>
+                            <Td className="text-slate-500 text-xs">{METHOD_LABEL[t.method] || t.method}</Td>
+                            <Td><span className={`font-semibold ${Number(t.amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>{money(t.amount)}</span></Td>
+                          </Tr>
+                        ))}
+                      </Table>
+                    </Card>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </>
       )}
     </div>

@@ -4,9 +4,8 @@ import { getOwnFamily, getOwnEnrollments, listAnnouncements } from '../../lib/su
 import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-
-const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
-const money = (n) => `${Number(n) < 0 ? '-' : ''}$${Math.abs(Number(n || 0)).toFixed(2)}`
+import { money } from '../../lib/format'
+import { CAT_DOT } from '../../lib/categories'
 
 export default function FamilyDashboard() {
   const { user } = useAuth()
@@ -92,7 +91,8 @@ export default function FamilyDashboard() {
           ) : (
             <div className="space-y-2">
               {myClasses.map(e => (
-                <div key={e.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                <Link key={e.id} to={`/class/${e.class_id}`}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer">
                   <div>
                     <p className="text-sm font-medium text-slate-900">{e.classes?.name || e.classes?.courses?.name}</p>
                     <p className="text-xs text-slate-400">
@@ -101,7 +101,7 @@ export default function FamilyDashboard() {
                     </p>
                   </div>
                   <Badge variant="enrolled">Enrolled</Badge>
-                </div>
+                </Link>
               ))}
             </div>
           )}

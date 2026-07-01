@@ -7,7 +7,7 @@ export default function Settings() {
   const { user, refreshUser } = useAuth()
   const isFamily = user?.role === 'family'
 
-  const [form, setForm] = useState({ full_name: '', family_name: '', phone: '', date_of_birth: '', address: '' })
+  const [form, setForm] = useState({ full_name: '', family_name: '', phone: '', date_of_birth: '', address: '', username: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -27,6 +27,7 @@ export default function Settings() {
           phone: rec.phone || '',
           date_of_birth: rec.date_of_birth || '',
           address: rec.address || '',
+          username: rec.username || '',
         })
       })
       .catch(err => { if (live) setError(err.message) })
@@ -41,7 +42,7 @@ export default function Settings() {
     setSaving(true); setError(''); setSaved(false)
     try {
       if (isFamily) {
-        await saveOwnFamilyInfo({ family_name: form.family_name, phone: form.phone, address: form.address })
+        await saveOwnFamilyInfo({ family_name: form.family_name, phone: form.phone, address: form.address, username: form.username })
       } else {
         await saveOwnProfileInfo({ full_name: form.full_name, phone: form.phone, date_of_birth: form.date_of_birth, address: form.address })
       }
@@ -65,7 +66,13 @@ export default function Settings() {
         ) : (
           <form onSubmit={handleSave} className="space-y-4">
             {isFamily ? (
-              <Input label="Family Name" id="s-famname" value={form.family_name} onChange={set('family_name')} />
+              <>
+                <Input label="Family Name" id="s-famname" value={form.family_name} onChange={set('family_name')} />
+                <div>
+                  <Input label="Login Username" id="s-username" placeholder="e.g. the-chen-family" value={form.username} onChange={set('username')} />
+                  <p className="text-xs text-slate-400 mt-1">Sign in with this username or your 4-digit Family ID. Letters, numbers, dot, dash, underscore (3–30 chars).</p>
+                </div>
+              </>
             ) : (
               <Input label="Full Name" id="s-name" value={form.full_name} onChange={set('full_name')} />
             )}
@@ -94,16 +101,6 @@ export default function Settings() {
             <Button type="submit" variant="gold" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save Changes'}</Button>
           </form>
         )}
-      </Card>
-
-      <Card>
-        <h3 className="font-display text-base text-slate-900 mb-4">Notifications</h3>
-        {['Email me about new announcements', 'Email me about payment reminders', 'Email me about class updates'].map(label => (
-          <label key={label} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0 cursor-pointer">
-            <span className="text-sm text-slate-700">{label}</span>
-            <input type="checkbox" defaultChecked className="accent-yellow-400 w-4 h-4 cursor-pointer" />
-          </label>
-        ))}
       </Card>
     </div>
   )

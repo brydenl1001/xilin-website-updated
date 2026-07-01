@@ -1,26 +1,30 @@
 import { useState, useEffect } from 'react'
-import { listPublicAnnouncements } from '../../lib/supabaseClient'
+import { listPublicAnnouncements, listAnnouncements, announcementImages as images } from '../../lib/supabaseClient'
 import { Lock, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { useAuth } from '../../context/AuthContext'
 
 const CATS = ['all', 'events', 'academics', 'general', 'urgent']
 const CAT_BG = { events: 'border-l-amber-400', academics: 'border-l-blue-400', general: 'border-l-slate-300', urgent: 'border-l-red-400' }
 const CAT_BADGE = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
-const images = (a) => (a.media_urls?.length ? a.media_urls : (a.media_url ? [a.media_url] : []))
 
 export default function PublicNews() {
+  const { user } = useAuth()
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  // Signed-in users see internal announcements too; anonymous visitors see public only.
   useEffect(() => {
-    listPublicAnnouncements()
+    setLoading(true)
+    const fetch = user ? listAnnouncements() : listPublicAnnouncements()
+    fetch
       .then(setAnnouncements)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false))
-  }, [])
+  }, [user])
 
   const filtered = announcements.filter(a => filter === 'all' || a.category === filter)
 
@@ -32,14 +36,16 @@ export default function PublicNews() {
         <p className="text-slate-500">Stay up to date with everything happening at Xilin Northwest Chinese School.</p>
       </div>
 
-      {/* Sign-in nudge */}
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-7 flex items-center gap-3">
-        <Lock size={16} className="text-slate-400 flex-shrink-0" />
-        <p className="text-sm text-slate-500">
-          Staff, students, and families have access to additional internal announcements.{' '}
-          <Link to="/login" className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2">Sign in</Link> to see all updates.
-        </p>
-      </div>
+      {/* Sign-in nudge — only for anonymous visitors */}
+      {!user && (
+        <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-7 flex items-center gap-3">
+          <Lock size={16} className="text-slate-400 flex-shrink-0" />
+          <p className="text-sm text-slate-500">
+            Staff, students, and families have access to additional internal announcements.{' '}
+            <Link to="/login" className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2">Sign in</Link> to see all updates.
+          </p>
+        </div>
+      )}
 
       {/* Category tabs */}
       <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-xl p-1 mb-6 flex-wrap">
@@ -73,9 +79,12 @@ export default function PublicNews() {
           >
             <div className="flex items-start justify-between gap-3 mb-1">
               <h3 className="font-display text-[16px] text-slate-900 leading-snug">{ann.title}</h3>
-              <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full flex-shrink-0 capitalize ${CAT_BADGE[ann.category]}`}>
-                {ann.category}
-              </span>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {ann.is_public === false && <span className="text-xs font-medium px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-500 inline-flex items-center gap-1"><Lock size={10} /> Internal</span>}
+                <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full capitalize ${CAT_BADGE[ann.category]}`}>
+                  {ann.category}
+                </span>
+              </div>
             </div>
             <p className="text-xs text-slate-400">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
             <p className="text-sm text-slate-500 line-clamp-2 mt-1">{ann.body}</p>

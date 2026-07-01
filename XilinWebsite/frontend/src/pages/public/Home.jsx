@@ -1,23 +1,24 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { schoolInfo } from '../../lib/basicInfo'
-import { listPublicAnnouncements, getPublicStats, getActiveSemester, listCalendarEvents } from '../../lib/supabaseClient'
+import { listPublicAnnouncements, listAnnouncements, getPublicStats, getActiveSemester, listCalendarEvents, announcementImages } from '../../lib/supabaseClient'
 import { Button } from '../../components/ui'
 import EventCalendar, { semesterEvents } from '../../components/EventCalendar'
 import { ArrowRight, Mail, Globe, BookOpen, Users, GraduationCap } from 'lucide-react'
+import { useAuth } from '../../context/AuthContext'
 const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
 
-const announcementImages = (a) => (a.media_urls?.length ? a.media_urls : (a.media_url ? [a.media_url] : []))
-
 export default function Home() {
+  const { user } = useAuth()
   const [publicNews, setPublicNews] = useState([])
   const [loading, setLoading] = useState(true)
-  const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0 })
+  const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0, classCount: 0 })
   const [calEvents, setCalEvents] = useState([])
   const [activeSem, setActiveSem] = useState(null)
 
   useEffect(() => {
-    listPublicAnnouncements()
+    // Signed-in users see internal announcements too.
+    ;(user ? listAnnouncements() : listPublicAnnouncements())
       .then(data => setPublicNews(data.slice(0, 3)))
       .catch(err => console.error('Failed to load announcements:', err))
       .finally(() => setLoading(false))
@@ -26,7 +27,7 @@ export default function Home() {
       .catch(err => console.error('Failed to load stats:', err))
     getActiveSemester().then(setActiveSem).catch(() => {})
     listCalendarEvents().then(setCalEvents).catch(() => {})
-  }, [])
+  }, [user])
 
   const calendarEvents = [
     ...semesterEvents(activeSem),
@@ -68,7 +69,7 @@ export default function Home() {
           {[
             { label: 'Students Enrolled', value: stats.studentCount.toLocaleString(), Icon: BookOpen },
             { label: 'Dedicated Teachers', value: stats.teacherCount.toLocaleString(), Icon: Users },
-            { label: 'Classes Offered', value: stats.courseCount.toLocaleString(), Icon: GraduationCap },
+            { label: 'Classes Offered', value: stats.classCount.toLocaleString(), Icon: GraduationCap },
           ].map(s => (
             <div key={s.label} className="text-center">
               <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center mx-auto mb-3">

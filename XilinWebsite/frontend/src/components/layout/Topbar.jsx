@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { listAnnouncements, listEnrollmentApplications } from '../../lib/supabaseClient'
+import { CAT_DOT } from '../../lib/categories'
 
 const PAGE_TITLES = {
   '/dashboard':       'Dashboard',
@@ -15,14 +16,13 @@ const PAGE_TITLES = {
   '/families':        'Families',
   '/timetable':       'Timetable',
   '/calendar':        'Calendar',
+  '/members':         'Members & Classes',
   '/child-timetable': 'Timetable',
   '/my-classes':      'My Classes',
   '/payments':        'Payments',
   '/users':           'User Management',
   '/settings':        'Settings',
 }
-
-const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
 
 function greeting() {
   const h = new Date().getHours()
@@ -119,7 +119,7 @@ function NotificationsBell() {
 
 export default function Topbar({ onSidebarToggle, pathname }) {
   const { user } = useAuth()
-  const title = PAGE_TITLES[pathname] || 'Portal'
+  const title = PAGE_TITLES[pathname] || (pathname.startsWith('/class/') ? 'Class Details' : 'Portal')
 
   return (
     <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 flex-shrink-0 gap-4">

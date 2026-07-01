@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { listClasses, listSemesters } from '../../lib/supabaseClient'
 import { Card, PageHeader, Badge, Select } from '../../components/ui'
-import { AlertTriangle } from 'lucide-react'
 
 // See note in src/pages/shared/Timetable.jsx — no class_schedule table exists
 // yet, so this shows all classes for a selected semester instead of a grid.

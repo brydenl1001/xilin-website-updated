@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { Plus, KeyRound, Check, ArrowLeft, Mail, Phone, Hash, BookOpen, GraduationCap, Users as UsersIcon } from 'lucide-react'
 import { listProfiles, listFamilies, createAccount, listClasses, getOwnEnrollments } from '../../lib/supabaseClient'
 import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
+import { fmtTime } from '../../lib/format'
 
 const ROLE_VARIANT = { admin: 'navy', teacher: 'academics', student: 'success', parent: 'gold' }
 const SORT_OPTIONS = [{ key: 'full_name', label: 'Name' }, { key: 'role', label: 'Role' }]
 const ROLE_OPTIONS = ['admin', 'teacher', 'student']
-const fmtTime = (t) => t ? t.slice(0, 5) : ''
 const money = (n) => `$${Number(n || 0).toFixed(2)}`
 
 const KINDS = [
@@ -18,13 +19,14 @@ const KINDS = [
 const BLANK = { kind: 'staff', full_name: '', family_name: '', email: '', phone: '', role: 'teacher', family_id: '', password: '' }
 
 export default function AdminUsers() {
+  const { id } = useParams()
+  const navigate = useNavigate()
   const [profiles, setProfiles] = useState([])
   const [families, setFamilies] = useState([])
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
-  const [selectedUser, setSelectedUser] = useState(null)
 
   const [open, setOpen] = useState(false)
   const [form, setForm] = useState(BLANK)
@@ -96,8 +98,18 @@ export default function AdminUsers() {
 
   const memberRoleValue = form.role === 'admin' || form.role === 'teacher' ? 'student' : form.role
 
-  if (selectedUser) {
-    return <UserDetail user={selectedUser} families={families} classes={classes} onBack={() => setSelectedUser(null)} />
+  if (id) {
+    if (loading) return <div className="max-w-5xl"><p className="py-12 text-center text-slate-400 text-sm">Loading…</p></div>
+    const selectedUser = allUsers.find(u => u.id === id)
+    if (selectedUser) {
+      return <UserDetail user={selectedUser} families={families} classes={classes} onBack={() => navigate('/users')} />
+    }
+    return (
+      <div className="max-w-5xl">
+        <button onClick={() => navigate('/users')} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4 cursor-pointer"><ArrowLeft size={15} /> Back to users</button>
+        <Card><p className="py-8 text-center text-slate-400 text-sm">User not found.</p></Card>
+      </div>
+    )
   }
 
   return (
@@ -129,7 +141,7 @@ export default function AdminUsers() {
             {filtered.length === 0 ? (
               <Tr><Td className="py-12 text-center text-slate-400">No users found.</Td></Tr>
             ) : filtered.map((u, i) => (
-              <Tr key={u.id || i} onClick={() => setSelectedUser(u)}>
+              <Tr key={u.id || i} onClick={() => u.id && navigate(`/users/${u.id}`)}>
                 <Td><p className="font-medium text-slate-900">{u.full_name}</p></Td>
                 <Td><Badge variant={ROLE_VARIANT[u.role]}>{u.role}</Badge></Td>
                 <Td className="text-slate-500 text-xs">{u.familyName || u.email}</Td>

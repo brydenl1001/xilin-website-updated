@@ -3,8 +3,8 @@ import { Users, UserCheck, Wallet, GraduationCap } from 'lucide-react'
 import { listProfiles, listEnrollmentApplications, listFamilies, listAnnouncements, listClasses } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, Button, SectionHeader } from '../../components/ui'
 import { Link } from 'react-router-dom'
+import { CAT_DOT } from '../../lib/categories'
 
-const CAT_DOT = { urgent: 'bg-red-400', events: 'bg-amber-400', academics: 'bg-blue-400', general: 'bg-slate-300' }
 const money = (n) => `$${Math.abs(Number(n || 0)).toFixed(2)}`
 
 export default function AdminDashboard() {
@@ -100,13 +100,14 @@ export default function AdminDashboard() {
           ) : owing.length === 0 ? (
             <p className="text-slate-400 text-sm py-6">No families owe a balance. 🎉</p>
           ) : owing.slice(0, 6).map(f => (
-            <div key={f.id} className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0">
+            <Link key={f.id} to={`/families/${f.id}`}
+              className="flex items-center justify-between py-3 border-b border-slate-100 last:border-0 -mx-2 px-2 rounded-lg hover:bg-slate-50 transition-colors">
               <div>
                 <p className="text-[13px] font-medium text-slate-900">{f.family_name}</p>
                 <p className="text-[11px] text-slate-400">ID {f.family_code}</p>
               </div>
               <span className="text-sm font-semibold text-red-600">{money(f.balance)}</span>
-            </div>
+            </Link>
           ))}
         </Card>
       </div>

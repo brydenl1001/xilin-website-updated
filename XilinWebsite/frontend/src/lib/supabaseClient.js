@@ -1,4 +1,30 @@
-import { supabase } from './supabase'
+import { createClient } from '@supabase/supabase-js'
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+export const supabase = createClient(supabaseUrl, supabaseKey)
+
+/**
+ * Normalize an announcement's media into an array of URLs, supporting both the
+ * newer `media_urls` array column and the legacy single `media_url` column.
+ */
+export function announcementImages(a) {
+  if (a?.media_urls?.length) return a.media_urls
+  return a?.media_url ? [a.media_url] : []
+}
+
+/**
+ * Extract the most useful error message from a failed `functions.invoke()` call.
+ * Edge functions return their detail as JSON in the error context, so prefer that
+ * over the generic transport-level message.
+ */
+async function edgeFunctionError(error, fallback) {
+  let message = fallback ?? error.message
+  try {
+    const body = await error.context?.json?.()
+    if (body?.error) message = body.error
+  } catch { /* keep default message */ }
+  return new Error(message)
+}
 
 // ═════════════════════════════════════════════════════════════════════════════
 // CLIENT-SIDE SUPABASE FUNCTIONS
@@ -36,6 +62,7 @@ export async function getPublicStats() {
     studentCount: data?.studentCount ?? 0,
     teacherCount: data?.teacherCount ?? 0,
     courseCount:  data?.courseCount ?? 0,
+    classCount:   data?.classCount ?? 0,
   }
 }
 
@@ -47,15 +74,7 @@ export async function getPublicStats() {
  */
 export async function submitEnrollmentApplication(form) {
   const { data, error } = await supabase.functions.invoke('enroll-apply', { body: form })
-  if (error) {
-    // Surface the function's JSON error message when present.
-    let message = error.message
-    try {
-      const body = await error.context?.json?.()
-      if (body?.error) message = body.error
-    } catch { /* keep default message */ }
-    throw new Error(message)
-  }
+  if (error) throw await edgeFunctionError(error)
   return data
 }
 
@@ -81,14 +100,7 @@ export async function reviewEnrollmentApplication(applicationId, action) {
   const { data, error } = await supabase.functions.invoke('review-application', {
     body: { application_id: applicationId, action },
   })
-  if (error) {
-    let message = error.message
-    try {
-      const body = await error.context?.json?.()
-      if (body?.error) message = body.error
-    } catch { /* keep default message */ }
-    throw new Error(message)
-  }
+  if (error) throw await edgeFunctionError(error)
   return data
 }
 
@@ -102,14 +114,7 @@ export async function reviewEnrollmentApplication(applicationId, action) {
  */
 export async function createAccount(payload) {
   const { data, error } = await supabase.functions.invoke('create-account', { body: payload })
-  if (error) {
-    let message = error.message
-    try {
-      const body = await error.context?.json?.()
-      if (body?.error) message = body.error
-    } catch { /* keep default message */ }
-    throw new Error(message)
-  }
+  if (error) throw await edgeFunctionError(error)
   return data
 }
 
@@ -130,11 +135,7 @@ export async function signIn(email, password) {
  */
 export async function familyLogin(identifier, password) {
   const { data, error } = await supabase.functions.invoke('family-login', { body: { identifier, password } })
-  if (error) {
-    let message = 'Sign-in failed.'
-    try { const b = await error.context?.json?.(); if (b?.error) message = b.error } catch { /* keep default */ }
-    throw new Error(message)
-  }
+  if (error) throw await edgeFunctionError(error, 'Sign-in failed.')
   if (!data?.access_token) throw new Error(data?.error || 'Sign-in failed.')
   const { error: sErr } = await supabase.auth.setSession({
     access_token: data.access_token, refresh_token: data.refresh_token,
@@ -177,27 +178,16 @@ export function onAuthStateChange(callback) {
  *   { type: 'family',  id, family_name, email, family_members: [...] }
  */
 export async function resolveCurrentIdentity(uid) {
-  // Try family login first
-  const { data: family, error: familyError } = await supabase
-    .from('families')
-    .select('*, family_members(*, profiles(*))')
-    .eq('id', uid)
-    .maybeSingle()
+  const [{ data: family, error: familyError }, { data: profile, error: profileError }] =
+    await Promise.all([
+      supabase.from('families').select('*, family_members(*, profiles(*))').eq('id', uid).maybeSingle(),
+      supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+    ])
   if (familyError) throw familyError
-
-  if (family) {
-    return { type: 'family', ...family }
-  }
-
-  // Otherwise it's a direct profile login (admin/teacher/student)
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', uid)
-    .single()
+  if (family) return { type: 'family', ...family }
   if (profileError) throw profileError
-
-  return { type: 'profile', ...profile }
+  if (profile) return { type: 'profile', ...profile }
+  throw new Error('No identity found for current session.')
 }
 
 /** Fetch a single profile by id. RLS allows: self, own family, or admin. */
@@ -211,17 +201,6 @@ export async function getProfile(profileId) {
   return data
 }
 
-/** Update the current user's own profile (name, phone, avatar — not role/can_login). */
-export async function updateOwnProfile(profileId, updates) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .update(updates)
-    .eq('id', profileId)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
 
 /**
  * Self-service: a signed-in staff member updates their own personal info.
@@ -238,13 +217,49 @@ export async function saveOwnProfileInfo({ full_name, phone, date_of_birth, addr
   if (error) throw new Error(error.message)
 }
 
-/** Self-service: a family (household login) updates its own contact info. */
-export async function saveOwnFamilyInfo({ family_name, phone, address }) {
+/** Self-service: a family (household login) updates its own contact info + login username. */
+export async function saveOwnFamilyInfo({ family_name, phone, address, username }) {
   const { error } = await supabase.rpc('update_own_family', {
     p_family_name: family_name ?? null,
     p_phone: phone ?? null,
     p_address: address ?? null,
+    p_username: username ?? null,
   })
+  if (error) throw new Error(error.message)
+}
+
+/** Family self-service: add a member (parent/student) to the caller's own family. */
+export async function familyAddMember(full_name, role) {
+  const { data, error } = await supabase.rpc('family_add_member', { p_full_name: full_name, p_role: role })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** Family self-service: edit a member of the caller's own family. */
+export async function familyUpdateMember(profileId, { full_name, role }) {
+  const { error } = await supabase.rpc('family_update_member', {
+    p_profile_id: profileId, p_full_name: full_name, p_role: role,
+  })
+  if (error) throw new Error(error.message)
+}
+
+/** Family/admin: request enrollment that needs admin approval (e.g. after registration closes). */
+export async function requestEnrollment(memberId, classId) {
+  const { data, error } = await supabase.rpc('request_enrollment', { p_member_id: memberId, p_class_id: classId })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** Admin: approve a pending enrollment request (charges the family + enrolls). */
+export async function approvePendingEnrollment(enrollmentId) {
+  const { data, error } = await supabase.rpc('approve_pending_enrollment', { p_enrollment_id: enrollmentId })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** Admin: reject (delete) a pending enrollment request. */
+export async function rejectPendingEnrollment(enrollmentId) {
+  const { error } = await supabase.rpc('reject_pending_enrollment', { p_enrollment_id: enrollmentId })
   if (error) throw new Error(error.message)
 }
 
@@ -353,13 +368,11 @@ export async function updateFamilyMember(familyId, profileId, { full_name, role 
  * and the member profile. (Members have no login, so there's no auth user.)
  */
 export async function removeFamilyMemberFully(familyId, profileId) {
-  const { error: e1 } = await supabase.from('enrollments').delete().eq('student_id', profileId)
-  if (e1) throw e1
-  const { error: e2 } = await supabase
-    .from('family_members').delete().eq('family_id', familyId).eq('profile_id', profileId)
-  if (e2) throw e2
-  const { error: e3 } = await supabase.from('profiles').delete().eq('id', profileId)
-  if (e3) throw e3
+  const { error } = await supabase.rpc('remove_family_member_fully', {
+    p_family_id: familyId,
+    p_profile_id: profileId,
+  })
+  if (error) throw error
 }
 
 
@@ -427,16 +440,8 @@ export async function listCourses() {
   return data
 }
 
-/** Public: list courses for the unauthenticated /classes page. Ordered as a flat catalog. */
-export async function listPublicCourses() {
-  const { data, error } = await supabase
-    .from('courses')
-    .select('*')
-    .order('subject_area', { ascending: true })
-    .order('name', { ascending: true })
-  if (error) throw error
-  return data
-}
+/** Public: list courses for the unauthenticated /classes page. Delegates to listCourses. */
+export function listPublicCourses() { return listCourses() }
 
 /**
  * Public: list running class instances for the active semester (the /classes
@@ -535,6 +540,12 @@ export async function updateClass(classId, updates) {
   return data
 }
 
+/** Admin: delete a class. Guarded server-side — refuses if anyone is still enrolled/pending. */
+export async function deleteClass(classId) {
+  const { error } = await supabase.rpc('delete_class', { p_class_id: classId })
+  if (error) throw new Error(error.message)
+}
+
 /** Admin: assign a teacher to a class. role: 'lead' | 'assistant' | 'substitute'. */
 export async function assignTeacherToClass(classId, teacherId, role = 'lead') {
   const { data, error } = await supabase
@@ -572,6 +583,20 @@ export async function getOwnEnrollments(studentId) {
   return data
 }
 
+/** Admin: batch-fetch enrollments for multiple members in one query. Returns map of memberId → enrollment[]. */
+export async function getEnrollmentsForMembers(memberIds) {
+  if (!memberIds.length) return {}
+  const { data, error } = await supabase
+    .from('enrollments')
+    .select('*, classes(*, courses(*), semesters(*))')
+    .in('student_id', memberIds)
+    .order('application_date', { ascending: false })
+  if (error) throw error
+  const map = Object.fromEntries(memberIds.map(id => [id, []]))
+  ;(data || []).forEach(e => { if (map[e.student_id] !== undefined) map[e.student_id].push(e) })
+  return map
+}
+
 /** Admin/teacher: list all enrollments, optionally filtered by status. */
 export async function listEnrollments(status = null) {
   let query = supabase
@@ -602,49 +627,6 @@ export async function updateEnrollmentNotes(enrollmentId, notes) {
   return data
 }
 
-/** Admin: update enrollment status. Sets admission_date automatically when status = 'admitted'. */
-export async function updateEnrollmentStatus(enrollmentId, status) {
-  const updates = { status }
-  if (status === 'admitted') updates.admission_date = new Date().toISOString()
-
-  const { data, error } = await supabase
-    .from('enrollments')
-    .update(updates)
-    .eq('id', enrollmentId)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-/** Admin: assign an admitted student to a specific class, marking them enrolled. */
-export async function assignEnrollmentToClass(enrollmentId, classId) {
-  const { data, error } = await supabase
-    .from('enrollments')
-    .update({ class_id: classId, status: 'enrolled' })
-    .eq('id', enrollmentId)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-/** Admin: directly enroll a family member (student/parent) into a class. */
-export async function createEnrollment(studentId, classId, status = 'enrolled') {
-  const { data, error } = await supabase
-    .from('enrollments')
-    .insert({ student_id: studentId, class_id: classId, status })
-    .select('*, classes(*, courses(*), semesters(*))')
-    .single()
-  if (error) throw error
-  return data
-}
-
-/** Admin: remove an enrollment entirely. */
-export async function deleteEnrollment(enrollmentId) {
-  const { error } = await supabase.from('enrollments').delete().eq('id', enrollmentId)
-  if (error) throw error
-}
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -715,7 +697,7 @@ export async function listAllTransactions() {
 export async function listBalanceTransactions(familyId) {
   const { data, error } = await supabase
     .from('balance_transactions')
-    .select('*, classes(name, courses(name)), member:member_id(full_name)')
+    .select('*, classes(name, semester_id, courses(name), semesters(name)), member:member_id(full_name)')
     .eq('family_id', familyId)
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -793,7 +775,12 @@ export async function listAnnouncements(category = null) {
  * Admin/teacher: upload an image/media file for an announcement to Storage and
  * return its public URL. Stored in the public `announcement-media` bucket.
  */
+const ALLOWED_MEDIA_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'])
+
 export async function uploadAnnouncementMedia(file) {
+  if (!ALLOWED_MEDIA_TYPES.has(file.type)) {
+    throw new Error('File type not allowed. Accepted: JPEG, PNG, GIF, WebP, PDF.')
+  }
   const ext = (file.name.split('.').pop() || 'bin').toLowerCase()
   const path = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`
   const { error } = await supabase.storage

@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
-import { listPublicClasses } from '../../lib/supabaseClient'
-import { Users, BookOpen, ArrowRight, ChevronRight, X, Clock, MapPin, User } from 'lucide-react'
+import { listPublicClasses, getActiveSemester, enrollMember, requestEnrollment } from '../../lib/supabaseClient'
+import { Users, BookOpen, ArrowRight, ChevronRight, X, Clock, MapPin, User, Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button, ListToolbar, Badge } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
+import { useAuth } from '../../context/AuthContext'
+import { fmtTime } from '../../lib/format'
 
 const money = (n) => `$${Number(n || 0).toLocaleString()}`
-const fmtTime = (t) => (t ? t.slice(0, 5) : '')
 const schedule = (c) => c.day_of_week
   ? `${c.day_of_week}${c.start_time ? ` · ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}` : ''}`
   : 'Sundays'
@@ -19,14 +20,57 @@ const SORT_OPTIONS = [
 ]
 
 export default function PublicClasses() {
+  const { user } = useAuth()
+  const isFamily = user?.role === 'family'
+  const members = user?.familyMembers || []
+
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState(null)
+  const [semester, setSemester] = useState(null)
+  const [memberId, setMemberId] = useState('')
+  const [enrolling, setEnrolling] = useState(false)
+  const [enrollMsg, setEnrollMsg] = useState(null) // { type: 'ok' | 'err', text }
+
+  const refreshClasses = () => listPublicClasses().then(setClasses).catch(err => setError(err.message))
 
   useEffect(() => {
-    listPublicClasses().then(setClasses).catch(err => setError(err.message)).finally(() => setLoading(false))
+    refreshClasses().finally(() => setLoading(false))
+    getActiveSemester().then(setSemester).catch(() => {})
   }, [])
+
+  const regOpen = !semester?.registration_end || semester.registration_end >= new Date().toISOString().slice(0, 10)
+
+  const openClass = (cls) => {
+    setSelected(cls)
+    setMemberId(members[0]?.id || '')
+    setEnrollMsg(null)
+  }
+
+  const doEnroll = async () => {
+    if (!memberId || !selected) return
+    setEnrolling(true); setEnrollMsg(null)
+    try {
+      if (regOpen) await enrollMember(memberId, selected.id)
+      else await requestEnrollment(memberId, selected.id)
+      setEnrollMsg({ type: 'ok', text: regOpen ? 'Enrolled! View it in your portal.' : 'Request sent — an admin will review it.' })
+      await refreshClasses()
+    } catch (err) {
+      if (/registration has closed/i.test(err.message)) {
+        try {
+          await requestEnrollment(memberId, selected.id)
+          setEnrollMsg({ type: 'ok', text: 'Registration has closed — your request was sent to an admin for approval.' })
+        } catch (e2) {
+          setEnrollMsg({ type: 'err', text: e2.message })
+        }
+      } else {
+        setEnrollMsg({ type: 'err', text: err.message })
+      }
+    } finally {
+      setEnrolling(false)
+    }
+  }
 
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
     useListControls(classes, { searchKeys: ['name', 'course_name', 'subject_area', 'grade_level', 'description', 'code', 'room'], sortOptions: SORT_OPTIONS })
@@ -71,7 +115,7 @@ export default function PublicClasses() {
                 {bySubject[subject].map(cls => {
                   const full = isFull(cls)
                   return (
-                    <button key={cls.id} onClick={() => setSelected(cls)}
+                    <button key={cls.id} onClick={() => openClass(cls)}
                       className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left hover:bg-slate-50 transition-colors cursor-pointer">
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -155,7 +199,34 @@ export default function PublicClasses() {
                 </div>
               ))}
             </div>
-            <Link to="/enroll"><Button variant="gold" className="w-full">Enroll in this class <ArrowRight size={15} /></Button></Link>
+            {isFamily ? (
+              <div className="border-t border-slate-100 pt-4">
+                {members.length === 0 ? (
+                  <p className="text-sm text-slate-500">Add a member in your <Link to="/members" className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2">portal</Link> first, then enroll them here.</p>
+                ) : isFull(selected) ? (
+                  <p className="text-sm text-red-600 font-medium">This class is full.</p>
+                ) : (
+                  <>
+                    <label className="block text-xs font-medium text-slate-600 mb-1.5">Enroll which member?</label>
+                    <div className="flex gap-2">
+                      <select value={memberId} onChange={e => setMemberId(e.target.value)}
+                        className="flex-1 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-500">
+                        {members.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.relationship})</option>)}
+                      </select>
+                      <Button variant="gold" disabled={enrolling || !memberId} onClick={doEnroll}>
+                        {enrolling ? 'Working…' : <><Check size={15} /> {regOpen ? 'Enroll' : 'Request'}</>}
+                      </Button>
+                    </div>
+                    {!regOpen && <p className="text-xs text-amber-700 mt-2">Registration has closed for {semester?.name} — this will be sent to an admin for approval.</p>}
+                  </>
+                )}
+                {enrollMsg && (
+                  <p className={`text-xs mt-2.5 rounded-lg px-3 py-2 border ${enrollMsg.type === 'ok' ? 'text-green-700 bg-green-50 border-green-200' : 'text-red-600 bg-red-50 border-red-200'}`}>{enrollMsg.text}</p>
+                )}
+              </div>
+            ) : (
+              <Link to="/enroll"><Button variant="gold" className="w-full">Apply to Enroll in this class <ArrowRight size={15} /></Button></Link>
+            )}
           </div>
         </div>
       )}

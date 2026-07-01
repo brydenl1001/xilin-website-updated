@@ -15,6 +15,7 @@ import Login         from '../pages/public/Login'
 import Announcements from '../pages/shared/Announcements'
 import Settings      from '../pages/shared/Settings'
 import Timetable     from '../pages/shared/Timetable'
+import ClassDetail   from '../pages/shared/ClassDetail'
 
 // Admin pages
 import AdminDashboard   from '../pages/admin/Dashboard'
@@ -24,7 +25,6 @@ import AdminClasses     from '../pages/admin/Classes'
 import AdminSemesters   from '../pages/admin/Semesters'
 import AdminReports     from '../pages/admin/Reports'
 import AdminFamilies    from '../pages/admin/Families'
-import AdminTimetable   from '../pages/admin/Timetable'
 import AdminUsers       from '../pages/admin/Users'
 import AdminCalendar    from '../pages/admin/Calendar'
 
@@ -35,6 +35,7 @@ import TeacherMyClasses  from '../pages/teacher/MyClasses'
 // Family (household) pages
 import FamilyDashboard       from '../pages/family/Dashboard'
 import FamilyPayments        from '../pages/family/Payments'
+import FamilyMembers         from '../pages/family/Members'
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
@@ -69,10 +70,10 @@ function PortalRoutes() {
         <Route path="/dashboard"      element={<RoleDashboard />} />
         <Route path="/announcements"  element={<Announcements />} />
         <Route path="/settings"       element={<Settings />} />
+        <Route path="/class/:id"      element={<ClassDetail />} />
 
         {/* Admin */}
         {role === 'admin' && <>
-          <Route path="/timetable"   element={<AdminTimetable />} />
           <Route path="/calendar"    element={<AdminCalendar />} />
           <Route path="/applications" element={<AdminApplications />} />
           <Route path="/courses"        element={<AdminCourses />} />
@@ -80,7 +81,9 @@ function PortalRoutes() {
           <Route path="/semesters"    element={<AdminSemesters />} />
           <Route path="/reports"      element={<AdminReports />} />
           <Route path="/families"     element={<AdminFamilies />} />
+          <Route path="/families/:id" element={<AdminFamilies />} />
           <Route path="/users"       element={<AdminUsers />} />
+          <Route path="/users/:id"   element={<AdminUsers />} />
         </>}
 
         {/* Teacher */}
@@ -91,6 +94,7 @@ function PortalRoutes() {
 
         {/* Family (household) */}
         {role === 'family' && <>
+          <Route path="/members"           element={<FamilyMembers />} />
           <Route path="/child-timetable"   element={<Timetable subtitle="Weekly class schedule" />} />
           <Route path="/payments"          element={<FamilyPayments />} />
         </>}
