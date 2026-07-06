@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Eye, Check, X, ShieldCheck, KeyRound, Users, UserPlus } from 'lucide-react'
 import { listEnrollmentApplications, reviewEnrollmentApplication, listPublicCourses } from '../../lib/supabaseClient'
-import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, ListToolbar } from '../../components/ui'
+import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 
 const STATUS_ORDER = ['pending', 'approved', 'rejected']
@@ -90,7 +90,7 @@ export default function AdminApplications() {
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-12 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={6} />
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (

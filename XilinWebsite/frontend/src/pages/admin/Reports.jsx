@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { Download, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { listAllTransactions, listFamilies, listClasses, getClassRoster } from '../../lib/supabaseClient'
-import { Button, Card, PageHeader, Table, Tr, Td, Select } from '../../components/ui'
+import { Button, Card, PageHeader, Table, Tr, Td, Select, TableSkeleton } from '../../components/ui'
 import { money } from '../../lib/format'
+import { useFeedback } from '../../context/FeedbackContext'
 
 function downloadCSV(filename, rows) {
   const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`
@@ -17,12 +18,14 @@ function downloadCSV(filename, rows) {
 
 export default function AdminReports() {
   const navigate = useNavigate()
+  const { toast } = useFeedback()
   const [txns, setTxns] = useState([])
   const [families, setFamilies] = useState([])
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rosterClassId, setRosterClassId] = useState('')
+  const [rosterSem, setRosterSem] = useState('all')
   const [roster, setRoster] = useState([])
   const [rosterLoading, setRosterLoading] = useState(false)
 
@@ -48,7 +51,7 @@ export default function AdminReports() {
     if (!classId) return
     setRosterLoading(true)
     try { setRoster(await getClassRoster(classId)) }
-    catch (e) { alert(e.message) }
+    catch (e) { toast.error(e.message) }
     finally { setRosterLoading(false) }
   }
 
@@ -64,7 +67,12 @@ export default function AdminReports() {
     ])
   }
 
-  if (loading) return <div className="max-w-5xl"><p className="py-12 text-center text-slate-400 text-sm">Loading…</p></div>
+  // Semesters present among the classes (for the roster filter), newest first.
+  const rosterSemesters = Object.values(classes.reduce((a, c) => { if (c.semesters) a[c.semesters.id] = c.semesters; return a }, {}))
+    .sort((a, b) => (b.class_start || '').localeCompare(a.class_start || ''))
+  const rosterClasses = rosterSem === 'all' ? classes : classes.filter(c => c.semester_id === rosterSem)
+
+  if (loading) return <div className="max-w-5xl"><Card className="!p-0 overflow-hidden"><TableSkeleton rows={6} /></Card></div>
   if (error) return <div className="max-w-5xl"><p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p></div>
 
   return (
@@ -110,14 +118,20 @@ export default function AdminReports() {
         <h3 className="font-display text-lg text-slate-900">Class Rosters</h3>
         {roster.length > 0 && <Button size="sm" variant="outline" onClick={exportRoster}><Download size={13} /> Export CSV</Button>}
       </div>
-      <Select id="rosterclass" value={rosterClassId} onChange={e => loadRoster(e.target.value)} className="max-w-sm mb-4">
-        <option value="">Select a class…</option>
-        {classes.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-      </Select>
+      <div className="flex flex-wrap gap-2 mb-4">
+        <Select id="rostersem" value={rosterSem} onChange={e => { setRosterSem(e.target.value); loadRoster('') }} className="w-56">
+          <option value="all">All semesters</option>
+          {rosterSemesters.map(s => <option key={s.id} value={s.id}>{s.name}{s.is_current ? ' (current)' : ''}</option>)}
+        </Select>
+        <Select id="rosterclass" value={rosterClassId} onChange={e => loadRoster(e.target.value)} className="flex-1 min-w-[220px] max-w-sm">
+          <option value="">Select a class…</option>
+          {rosterClasses.map(c => <option key={c.id} value={c.id}>{c.name}{c.semesters?.name ? ` — ${c.semesters.name}` : ''}</option>)}
+        </Select>
+      </div>
       {rosterClassId && (
         <Card className="!p-0 overflow-hidden">
           {rosterLoading ? (
-            <p className="py-8 text-center text-slate-400 text-sm">Loading…</p>
+            <TableSkeleton rows={4} />
           ) : roster.length === 0 ? (
             <p className="py-8 text-center text-slate-400 text-sm flex items-center justify-center gap-2"><AlertCircle size={14} /> No one enrolled.</p>
           ) : (

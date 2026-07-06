@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Copy, CheckCircle } from 'lucide-react'
 import { listSemesters, createSemester, updateSemester, copySemesterClasses } from '../../lib/supabaseClient'
-import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select } from '../../components/ui'
+import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, TableSkeleton } from '../../components/ui'
 
-const BLANK = { name: '', academic_year: '', term: 'Fall', registration_start: '', registration_end: '', class_start: '', class_end: '', is_active: 'false' }
+const BLANK = { name: '', academic_year: '', term: 'Fall', registration_start: '', registration_end: '', class_start: '', class_end: '', is_active: 'false', is_current: 'false' }
 
 export default function AdminSemesters() {
   const [semesters, setSemesters] = useState([])
@@ -31,7 +31,8 @@ export default function AdminSemesters() {
     setForm({
       name: s.name || '', academic_year: s.academic_year || '', term: s.term || 'Fall',
       registration_start: s.registration_start || '', registration_end: s.registration_end || '',
-      class_start: s.class_start || '', class_end: s.class_end || '', is_active: s.is_active ? 'true' : 'false',
+      class_start: s.class_start || '', class_end: s.class_end || '',
+      is_active: s.is_active ? 'true' : 'false', is_current: s.is_current ? 'true' : 'false',
     })
     setEditing(s); setSaveError('')
   }
@@ -43,7 +44,7 @@ export default function AdminSemesters() {
       name: form.name.trim(), academic_year: form.academic_year.trim() || null, term: form.term,
       registration_start: form.registration_start || null, registration_end: form.registration_end || null,
       class_start: form.class_start || null, class_end: form.class_end || null,
-      is_active: form.is_active === 'true',
+      is_active: form.is_active === 'true', is_current: form.is_current === 'true',
     }
     try {
       if (editing?.id) await updateSemester(editing.id, payload)
@@ -68,7 +69,7 @@ export default function AdminSemesters() {
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-12 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={6} />
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
@@ -83,9 +84,13 @@ export default function AdminSemesters() {
                 </Td>
                 <Td className="text-slate-500 text-xs">{s.registration_start || '—'} → {s.registration_end || '—'}</Td>
                 <Td className="text-slate-500 text-xs">{s.class_start || '—'} → {s.class_end || '—'}</Td>
-                <Td>{s.is_active
-                  ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700"><CheckCircle size={12} /> Active</span>
-                  : <span className="text-xs text-slate-400">Inactive</span>}
+                <Td>
+                  <div className="flex items-center gap-1.5">
+                    {s.is_active
+                      ? <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700"><CheckCircle size={12} /> Active</span>
+                      : <span className="text-xs text-slate-400">Inactive</span>}
+                    {s.is_current && <Badge variant="gold">Current</Badge>}
+                  </div>
                 </Td>
                 <Td>
                   <div className="flex items-center gap-1 justify-end">
@@ -108,15 +113,23 @@ export default function AdminSemesters() {
             <Input label="Name" id="sn" placeholder="e.g. Fall 2026" value={form.name} onChange={set('name')} required />
             <Input label="Academic Year" id="ay" placeholder="2026-2027" value={form.academic_year} onChange={set('academic_year')} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Select label="Term" id="term" value={form.term} onChange={set('term')}>
               {['Fall', 'Spring', 'Summer', 'Winter'].map(t => <option key={t}>{t}</option>)}
             </Select>
             <Select label="Active" id="act" value={form.is_active} onChange={set('is_active')}>
               <option value="false">Inactive</option>
-              <option value="true">Active (current term)</option>
+              <option value="true">Active</option>
+            </Select>
+            <Select label="Current term" id="cur" value={form.is_current} onChange={set('is_current')}>
+              <option value="false">No</option>
+              <option value="true">Current</option>
             </Select>
           </div>
+          <p className="text-xs text-slate-400">
+            <span className="font-medium text-slate-500">Active</span> = shown publicly & open for enrollment (multiple allowed).
+            <span className="font-medium text-slate-500"> Current</span> = the default highlighted term (only one — setting this clears it elsewhere).
+          </p>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Registration opens" id="rs" type="date" value={form.registration_start} onChange={set('registration_start')} />
             <Input label="Registration closes" id="re" type="date" value={form.registration_end} onChange={set('registration_end')} />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
 import { getProfile, getOwnFamily, saveOwnProfileInfo, saveOwnFamilyInfo } from '../../lib/supabaseClient'
-import { Card, Button, Input, Textarea, PageHeader } from '../../components/ui'
+import { Card, Button, Input, Textarea, PageHeader, TableSkeleton } from '../../components/ui'
 
 export default function Settings() {
   const { user, refreshUser } = useAuth()
@@ -62,7 +62,7 @@ export default function Settings() {
       <Card className="mb-5">
         <h3 className="font-display text-base text-slate-900 mb-4">{isFamily ? 'Household Details' : 'Profile'}</h3>
         {loading ? (
-          <p className="text-sm text-slate-400 py-4">Loading…</p>
+          <TableSkeleton rows={3} className="!p-0 py-2" />
         ) : (
           <form onSubmit={handleSave} className="space-y-4">
             {isFamily ? (

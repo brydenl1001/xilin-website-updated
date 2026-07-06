@@ -1,9 +1,11 @@
 import { createContext, useContext, useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { supabase, resolveCurrentIdentity, signIn as supaSignIn, signOut as supaSignOut } from '../lib/supabaseClient'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
+  const navigate = useNavigate()
   // identity: { type: 'profile', id, full_name, role, ... }
   //        or { type: 'family',  id, family_name, family_members: [...] }
   const [identity, setIdentity] = useState(null)
@@ -60,6 +62,7 @@ export function AuthProvider({ children }) {
     await supaSignOut()
     setAuthEmail(null)
     setIdentity(null)
+    navigate('/')
   }
 
   // Re-fetch the current identity (e.g. after the user edits their own profile).

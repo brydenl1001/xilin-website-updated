@@ -32,7 +32,7 @@ export default function PublicNav() {
               key={to}
               to={to}
               className={`px-4 py-2 rounded-lg text-sm transition-colors ${
-                pathname === to
+                (to === '/' ? pathname === '/' : pathname.startsWith(to))
                   ? 'text-yellow-800 font-medium bg-yellow-50'
                   : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
               }`}

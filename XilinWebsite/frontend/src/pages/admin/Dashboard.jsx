@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Users, UserCheck, Wallet, GraduationCap } from 'lucide-react'
 import { listProfiles, listEnrollmentApplications, listFamilies, listAnnouncements, listClasses } from '../../lib/supabaseClient'
-import { StatCard, Card, Badge, Button, SectionHeader } from '../../components/ui'
+import { StatCard, Card, Badge, Button, SectionHeader, Skeleton, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { CAT_DOT } from '../../lib/categories'
 
@@ -65,7 +65,7 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {loading
-          ? Array.from({ length: 4 }).map((_, i) => <Card key={i}><p className="text-slate-300 text-sm">Loading…</p></Card>)
+          ? Array.from({ length: 4 }).map((_, i) => <Card key={i}><Skeleton className="h-9 w-9 rounded-lg mb-3" /><Skeleton className="h-7 w-1/2 mb-2" /><Skeleton className="h-3 w-2/3" /></Card>)
           : stats.map(s => <StatCard key={s.label} {...s} />)
         }
       </div>
@@ -76,7 +76,7 @@ export default function AdminDashboard() {
           <SectionHeader title="Recent Announcements"
             action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
           {loading ? (
-            <p className="text-slate-400 text-sm py-6">Loading…</p>
+            <TableSkeleton rows={3} className="!p-0 py-3" />
           ) : announcements.length === 0 ? (
             <p className="text-slate-400 text-sm py-6">No announcements yet.</p>
           ) : announcements.map(ann => (
@@ -96,7 +96,7 @@ export default function AdminDashboard() {
           <SectionHeader title="Outstanding Balances"
             action={<Link to="/reports" className="text-xs text-yellow-600 hover:text-yellow-700">Full report</Link>} />
           {loading ? (
-            <p className="text-slate-400 text-sm py-6">Loading…</p>
+            <TableSkeleton rows={3} className="!p-0 py-3" />
           ) : owing.length === 0 ? (
             <p className="text-slate-400 text-sm py-6">No families owe a balance. 🎉</p>
           ) : owing.slice(0, 6).map(f => (

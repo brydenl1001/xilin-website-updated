@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { BookOpen } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { listMyClasses } from '../../lib/supabaseClient'
-import { Card, Badge, PageHeader } from '../../components/ui'
+import { Card, Badge, PageHeader, TableSkeleton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 
 export default function TeacherMyClasses() {
@@ -22,7 +22,7 @@ export default function TeacherMyClasses() {
       <PageHeader title="My Classes" subtitle="Overview of all classes you teach" />
 
       {loading ? (
-        <p className="text-slate-400 text-sm text-center py-12">Loading…</p>
+        <TableSkeleton rows={6} />
       ) : classes.length === 0 ? (
         <p className="text-slate-400 text-sm text-center py-12">No classes assigned to you yet.</p>
       ) : (

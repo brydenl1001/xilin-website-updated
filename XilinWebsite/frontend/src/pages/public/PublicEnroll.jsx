@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle, ArrowRight, Users, UserPlus, ShieldCheck, CalendarDays } from 'lucide-react'
 import { Button, Input, Textarea } from '../../components/ui'
-import { listPublicCourses, submitEnrollmentApplication, getActiveSemester } from '../../lib/supabaseClient'
+import { listPublicCourses, submitEnrollmentApplication, getCurrentSemester } from '../../lib/supabaseClient'
 
 const STEPS = ['Your Details', 'Family', 'Classes', 'Review & Submit']
 
@@ -62,7 +62,7 @@ export default function PublicEnroll() {
     listPublicCourses()
       .then(setCourses)
       .catch(err => setCoursesError(err.message))
-    getActiveSemester().then(setSemester).catch(() => {})
+    getCurrentSemester().then(setSemester).catch(() => {})
   }, [])
 
   const toggleClass = (id) => setForm(f => ({

@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react'
 import { Plus } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import {
   listClasses, listCourses, listSemesters, listProfiles, getClassCounts,
 } from '../../lib/supabaseClient'
-import { Badge, Button, Card, PageHeader, Table, Tr, Td, ListToolbar } from '../../components/ui'
+import { Badge, Button, Card, PageHeader, Table, Tr, Td, ListToolbar, TableSkeleton } from '../../components/ui'
 import ClassFormModal from '../../components/ClassFormModal'
 import { useListControls } from '../../hooks/useListControls'
 import { fmtTime } from '../../lib/format'
+import { CLASS_STATUS_BADGE as STATUS_BADGE, CLASS_STATUS_LABEL as STATUS_LABEL } from '../../lib/categories'
 
 const SORT_OPTIONS = [
   { key: 'name', label: 'Class' },
   { key: 'courses.name', label: 'Course' },
   { key: 'start_time', label: 'Time' },
   { key: 'room', label: 'Room' },
+  { key: 'status', label: 'Status' },
 ]
 
 const leadOf = (cls) => cls.class_teachers?.find(ct => ct.role === 'lead')?.profiles || null
@@ -28,18 +30,26 @@ export default function AdminClasses() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
+  const [semesterFilter, setSemesterFilter] = useState('') // '' until semesters load, then active sem id or 'all'
 
   const load = () => {
     setLoading(true)
     Promise.all([listClasses(), listCourses(), listSemesters(), listProfiles('teacher'), getClassCounts()])
-      .then(([cl, co, se, te, cn]) => { setClasses(cl); setCourses(co); setSemesters(se); setTeachers(te); setCounts(cn) })
+      .then(([cl, co, se, te, cn]) => {
+        setClasses(cl); setCourses(co); setSemesters(se); setTeachers(te); setCounts(cn)
+        setSemesterFilter(prev => prev || se.find(s => s.is_active)?.id || 'all')
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }
   useEffect(() => { load() }, [])
 
+  const shownClasses = semesterFilter && semesterFilter !== 'all'
+    ? classes.filter(c => c.semester_id === semesterFilter)
+    : classes
+
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
-    useListControls(classes, { searchKeys: ['name', 'courses.name', 'room'], sortOptions: SORT_OPTIONS })
+    useListControls(shownClasses, { searchKeys: ['name', 'courses.name', 'room'], sortOptions: SORT_OPTIONS })
 
   return (
     <div className="max-w-5xl animate-fade-in">
@@ -47,15 +57,22 @@ export default function AdminClasses() {
         action={<Button variant="gold" size="sm" onClick={() => setCreating(true)}><Plus size={14} /> New Class</Button>} />
 
       <ListToolbar query={query} onQuery={setQuery} placeholder="Search classes..."
-        sortOptions={SORT_OPTIONS} sortKey={sortKey} onSortKey={setSortKey} sortDir={sortDir} onToggleDir={toggleDir} />
+        sortOptions={SORT_OPTIONS} sortKey={sortKey} onSortKey={setSortKey} sortDir={sortDir} onToggleDir={toggleDir}
+        right={
+          <select value={semesterFilter} onChange={e => setSemesterFilter(e.target.value)}
+            className="text-xs border border-slate-200 rounded-lg px-2 h-9 bg-white outline-none text-slate-700 cursor-pointer">
+            <option value="all">All semesters</option>
+            {semesters.map(s => <option key={s.id} value={s.id}>{s.name}{s.is_current ? ' (current)' : ''}</option>)}
+          </select>
+        } />
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-12 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={6} />
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
-          <Table headers={['Class', 'Course', 'When', 'Enrolled', 'Lead Teacher', '']}>
+          <Table headers={['Class', 'Course', 'When', 'Enrolled', 'Lead Teacher', 'Status', '']}>
             {filtered.length === 0 ? (
               <Tr><Td className="py-12 text-center text-slate-400">No classes scheduled yet.</Td></Tr>
             ) : filtered.map(c => {
@@ -73,7 +90,12 @@ export default function AdminClasses() {
                     <span className="text-slate-600 text-sm">{enrolled}{cap != null ? ` / ${cap}` : ''}</span>
                     {full && <Badge variant="danger">Full</Badge>}
                   </Td>
-                  <Td className="text-slate-600">{leadOf(c)?.full_name || <span className="text-slate-300">Unassigned</span>}</Td>
+                  <Td className="text-slate-600">
+                    {leadOf(c)
+                      ? <Link to={`/users/${leadOf(c).id}`} onClick={e => e.stopPropagation()} className="hover:text-yellow-700 hover:underline">{leadOf(c).full_name}</Link>
+                      : <span className="text-slate-300">Unassigned</span>}
+                  </Td>
+                  <Td><Badge variant={STATUS_BADGE[c.status] || 'default'}>{STATUS_LABEL[c.status] || c.status}</Badge></Td>
                   <Td><span className="text-xs text-yellow-600">Manage →</span></Td>
                 </Tr>
               )

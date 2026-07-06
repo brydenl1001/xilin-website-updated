@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import { Wallet, CreditCard, RefreshCw } from 'lucide-react'
 import { getOwnFamily, listBalanceTransactions, recordPayment } from '../../lib/supabaseClient'
-import { Button, Card, PageHeader, Table, Tr, Td } from '../../components/ui'
+import { Button, Card, PageHeader, Table, Tr, Td, TableSkeleton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
+import { useFeedback } from '../../context/FeedbackContext'
 import { money } from '../../lib/format'
 
 const METHOD_LABEL = { enrollment: 'Class purchase', drop_credit: 'Drop credit', cash: 'Cash payment', online: 'Online payment', adjustment: 'Adjustment' }
@@ -10,6 +12,7 @@ const PAYMENTS_BUCKET = 'Payments & Adjustments'
 
 export default function FamilyPayments() {
   const { user } = useAuth()
+  const { toast } = useFeedback()
   const [family, setFamily] = useState(null)
   const [ledger, setLedger] = useState([])
   const [loading, setLoading] = useState(true)
@@ -42,8 +45,9 @@ export default function FamilyPayments() {
       await recordPayment(user.id, amount, 'online', 'Online payment')
       setCustom('')
       await load()
+      toast.success(`Payment of ${money(amount)} recorded.`)
     } catch (err) {
-      alert(`Payment failed: ${err.message}`)
+      toast.error(`Payment failed: ${err.message}`)
     } finally {
       setPaying(false)
     }
@@ -64,7 +68,7 @@ export default function FamilyPayments() {
       <PageHeader title="Payments" subtitle="Your family balance, payments, and class purchases" />
 
       {loading ? (
-        <p className="text-slate-400 text-sm text-center py-12">Loading…</p>
+        <TableSkeleton rows={6} />
       ) : error ? (
         <p className="text-red-500 text-sm text-center py-12">Failed to load: {error}</p>
       ) : (
@@ -123,8 +127,16 @@ export default function FamilyPayments() {
                         {items.map(t => (
                           <Tr key={t.id}>
                             <Td className="text-slate-400 text-xs whitespace-nowrap">{t.created_at?.slice(0, 10)}</Td>
-                            <Td className="text-slate-600 text-xs">{t.member?.full_name || '—'}</Td>
-                            <Td className="text-slate-600 text-xs">{t.classes?.name || t.note || '—'}</Td>
+                            <Td className="text-slate-600 text-xs">
+                              {t.member_id && t.member?.full_name
+                                ? <Link to={`/members/${t.member_id}`} className="hover:text-yellow-700 hover:underline">{t.member.full_name}</Link>
+                                : (t.member?.full_name || '—')}
+                            </Td>
+                            <Td className="text-slate-600 text-xs">
+                              {t.class_id && t.classes?.name
+                                ? <Link to={`/class/${t.class_id}`} className="hover:text-yellow-700 hover:underline">{t.classes.name}</Link>
+                                : (t.classes?.name || t.note || '—')}
+                            </Td>
                             <Td className="text-slate-500 text-xs">{METHOD_LABEL[t.method] || t.method}</Td>
                             <Td><span className={`font-semibold ${Number(t.amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>{money(t.amount)}</span></Td>
                           </Tr>

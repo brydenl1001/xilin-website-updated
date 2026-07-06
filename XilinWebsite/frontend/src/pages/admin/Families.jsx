@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Mail, Phone, Users, BookOpen, Pencil, Trash2, Wallet, Hash } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { ArrowLeft, Plus, X, Mail, Phone, Users, BookOpen, Pencil, Trash2, Wallet, Hash, ExternalLink } from 'lucide-react'
 import {
   listFamilies, listClasses, getEnrollmentsForMembers, listBalanceTransactions,
   enrollMember, dropMember, recordPayment, createAccount, getClassCounts,
@@ -8,17 +8,15 @@ import {
   approvePendingEnrollment, rejectPendingEnrollment,
 } from '../../lib/supabaseClient'
 
-// Two classes conflict if same day with overlapping time windows.
-const timesOverlap = (a, b) =>
-  a?.day_of_week && a.day_of_week === b?.day_of_week &&
-  a.start_time && a.end_time && b.start_time && b.end_time &&
-  a.start_time < b.end_time && b.start_time < a.end_time
-import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar } from '../../components/ui'
+import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar, TableSkeleton } from '../../components/ui'
 import ClassPicker from '../../components/ClassPicker'
+import LedgerDetail from '../../components/LedgerDetail'
 import { useListControls } from '../../hooks/useListControls'
-import { money, fmtTime } from '../../lib/format'
+import { money } from '../../lib/format'
+import { ROLE_VARIANT } from '../../lib/categories'
+import { timesOverlap } from '../../lib/schedule'
+import { useFeedback } from '../../context/FeedbackContext'
 
-const ROLE_VARIANT = { parent: 'gold', student: 'success', guardian: 'navy' }
 const METHOD_LABEL = { enrollment: 'Enrollment', drop_credit: 'Drop credit', cash: 'Cash payment', online: 'Online payment', adjustment: 'Adjustment' }
 const SORT_OPTIONS = [
   { key: 'family_name', label: 'Family name' },
@@ -56,7 +54,7 @@ export default function AdminFamilies() {
 
   const selected = families.find(f => f.id === id)
   if (id) {
-    if (loading) return <div className="max-w-5xl"><p className="py-12 text-center text-slate-400 text-sm">Loading…</p></div>
+    if (loading) return <div className="max-w-5xl"><Card className="!p-0 overflow-hidden"><TableSkeleton rows={6} /></Card></div>
     if (selected) {
       return <FamilyDetail family={selected} classes={classes} counts={counts} onBack={() => navigate('/families')} onChanged={load} />
     }
@@ -85,7 +83,7 @@ export default function AdminFamilies() {
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-12 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={6} />
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
@@ -116,6 +114,7 @@ export default function AdminFamilies() {
 
 // ─────────────────────────────────────────────────────────────────────────────
 function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
+  const { toast, confirm } = useFeedback()
   const members = (family.family_members || []).map(m => ({ ...m.profiles, relationship: m.relationship }))
   const [enrollByMember, setEnrollByMember] = useState({})
   const [ledger, setLedger] = useState([])
@@ -164,16 +163,19 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
       .filter(e => e.status === 'enrolled')
       .map(e => e.classes)
       .find(ec => timesOverlap(ec, target))
-    if (conflict && !window.confirm(
-      `Heads up: this overlaps with "${conflict.name}" (${conflict.day_of_week} ${(conflict.start_time || '').slice(0,5)}). Enroll anyway?`
-    )) return
+    if (conflict && !(await confirm({
+      title: 'Schedule conflict',
+      message: `Heads up: this overlaps with "${conflict.name}" (${conflict.day_of_week} ${fmtTime(conflict.start_time)}). Enroll anyway?`,
+      confirmLabel: 'Enroll anyway',
+    }))) return
 
     setBusy(true)
     try {
       await enrollMember(memberId, classId)
       await refreshAll()
+      toast.success('Enrolled.')
     } catch (err) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setBusy(false)
     }
@@ -181,27 +183,31 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
 
   const approveRequest = async (enrollmentId) => {
     setBusy(true)
-    try { await approvePendingEnrollment(enrollmentId); await refreshAll() }
-    catch (err) { alert(err.message) }
+    try { await approvePendingEnrollment(enrollmentId); await refreshAll(); toast.success('Request approved and enrolled.') }
+    catch (err) { toast.error(err.message) }
     finally { setBusy(false) }
   }
   const rejectRequest = async (enrollmentId) => {
-    if (!window.confirm('Reject this class request?')) return
+    if (!(await confirm({ title: 'Reject request', message: 'Reject this class request?', confirmLabel: 'Reject', danger: true }))) return
     setBusy(true)
-    try { await rejectPendingEnrollment(enrollmentId); await refreshAll() }
-    catch (err) { alert(err.message) }
+    try { await rejectPendingEnrollment(enrollmentId); await refreshAll(); toast.success('Request rejected.') }
+    catch (err) { toast.error(err.message) }
     finally { setBusy(false) }
   }
 
   const removeClass = async (memberId, enrollmentId, className) => {
-    if (!window.confirm(`Drop "${className}"? Any prorated credit will be returned to the family balance.`)) return
+    if (!(await confirm({
+      title: 'Drop class',
+      message: `Drop "${className}"? Any prorated credit will be returned to the family balance.`,
+      confirmLabel: 'Drop class', danger: true,
+    }))) return
     setBusy(true)
     try {
       const res = await dropMember(enrollmentId)
       await refreshAll()
-      alert(`Dropped. Credit returned: ${money(res.credit)}.`)
+      toast.success(`Dropped. Credit returned: ${money(res.credit)}.`)
     } catch (err) {
-      alert(err.message)
+      toast.error(err.message)
     } finally {
       setBusy(false)
     }
@@ -255,13 +261,18 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
     }
   }
   const removeMember = async (m) => {
-    if (!window.confirm(`Remove ${m.full_name} from this family? Their enrollments and member record will be permanently deleted.`)) return
+    if (!(await confirm({
+      title: 'Remove member',
+      message: `Remove ${m.full_name} from this family? Any enrolled classes will be dropped (prorated credit returned) and their record permanently deleted.`,
+      confirmLabel: 'Remove member', danger: true,
+    }))) return
     setBusy(true)
     try {
       await removeFamilyMemberFully(family.id, m.id)
       await refreshAll()
+      toast.success(`${m.full_name} removed.`)
     } catch (err) {
-      alert(`Could not remove member: ${err.message}`)
+      toast.error(`Could not remove member: ${err.message}`)
     } finally {
       setBusy(false)
     }
@@ -332,7 +343,8 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
                     <p className="font-medium text-slate-900">{m.full_name}</p>
                     <Badge variant={ROLE_VARIANT[m.relationship] || 'default'}>{m.relationship}</Badge>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5">
+                    <Link to={`/users/${m.id}`}><Button variant="outline" size="sm" className="!border-yellow-300 !text-yellow-800 hover:!bg-yellow-50"><ExternalLink size={13} className="text-yellow-600" /> View</Button></Link>
                     <button onClick={() => openEditMember(m)} disabled={busy} title="Edit member"
                       className="text-slate-400 hover:text-yellow-600 transition-colors cursor-pointer p-1 disabled:opacity-40">
                       <Pencil size={14} />
@@ -397,7 +409,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-8 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={4} />
         ) : ledger.length === 0 ? (
           <p className="py-8 text-center text-slate-400 text-sm">No transactions yet.</p>
         ) : (
@@ -406,9 +418,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
               <Tr key={t.id}>
                 <Td className="text-slate-400 text-xs whitespace-nowrap">{t.created_at?.slice(0, 10)}</Td>
                 <Td className="text-slate-700">{METHOD_LABEL[t.method] || t.method}</Td>
-                <Td className="text-slate-500 text-xs">
-                  {[t.member?.full_name, t.classes?.name, t.note].filter(Boolean).join(' · ') || '—'}
-                </Td>
+                <Td className="text-slate-500 text-xs"><LedgerDetail t={t} memberTo={(mid) => `/users/${mid}`} /></Td>
                 <Td className="text-slate-400 text-xs">{t.created_by_name || 'System'}</Td>
                 <Td><span className={`font-semibold ${Number(t.amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>{money(t.amount)}</span></Td>
               </Tr>

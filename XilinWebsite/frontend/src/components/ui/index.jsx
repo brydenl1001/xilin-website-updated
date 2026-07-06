@@ -1,5 +1,27 @@
+import { useEffect } from 'react'
 import { X, Search, ArrowUp, ArrowDown } from 'lucide-react'
 import { createPortal } from 'react-dom'
+
+// ─── Skeleton loaders ─────────────────────────────────────────────────────────
+export function Skeleton({ className = '' }) {
+  return <div aria-hidden="true" className={`animate-pulse rounded-md bg-slate-200/70 ${className}`} />
+}
+
+/** Placeholder rows for a table/list while data loads. */
+export function TableSkeleton({ rows = 5, className = '' }) {
+  return (
+    <div className={`p-5 space-y-3.5 ${className}`} role="status" aria-label="Loading">
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="flex items-center gap-4">
+          <Skeleton className="h-4 w-1/4" />
+          <Skeleton className="h-4 w-1/6" />
+          <Skeleton className="h-4 flex-1" />
+          <Skeleton className="h-4 w-12" />
+        </div>
+      ))}
+    </div>
+  )
+}
 
 // ─── ListToolbar (search + sort) ───────────────────────────────────────────────
 export function ListToolbar({ query, onQuery, placeholder = 'Search...', sortOptions = [], sortKey, onSortKey, sortDir, onToggleDir, right }) {
@@ -181,6 +203,14 @@ export function Textarea({ label, id, placeholder, value, onChange, rows = 4, cl
 
 // ─── Modal ────────────────────────────────────────────────────────────────────
 export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' }) {
+  // Escape closes the dialog (a11y parity with the backdrop click).
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [open, onClose])
+
   if (!open) return null
   // Rendered via a portal to <body> so the fixed overlay covers the whole
   // viewport — otherwise a transformed ancestor (e.g. animate-fade-in pages)
@@ -189,6 +219,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-lg' })
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" onClick={onClose}>
       <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" />
       <div
+        role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : undefined}
         className={`relative bg-white rounded-2xl shadow-2xl w-full ${maxWidth} p-6 my-8 animate-fade-in`}
         onClick={e => e.stopPropagation()}
       >

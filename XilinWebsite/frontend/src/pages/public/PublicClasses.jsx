@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { listPublicClasses, getActiveSemester, enrollMember, requestEnrollment } from '../../lib/supabaseClient'
+import { listPublicClasses, enrollMember, requestEnrollment } from '../../lib/supabaseClient'
 import { Users, BookOpen, ArrowRight, ChevronRight, X, Clock, MapPin, User, Check } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button, ListToolbar, Badge } from '../../components/ui'
@@ -28,7 +28,6 @@ export default function PublicClasses() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState(null)
-  const [semester, setSemester] = useState(null)
   const [memberId, setMemberId] = useState('')
   const [enrolling, setEnrolling] = useState(false)
   const [enrollMsg, setEnrollMsg] = useState(null) // { type: 'ok' | 'err', text }
@@ -37,10 +36,10 @@ export default function PublicClasses() {
 
   useEffect(() => {
     refreshClasses().finally(() => setLoading(false))
-    getActiveSemester().then(setSemester).catch(() => {})
   }, [])
 
-  const regOpen = !semester?.registration_end || semester.registration_end >= new Date().toISOString().slice(0, 10)
+  const today = new Date().toISOString().slice(0, 10)
+  const regOpenFor = (c) => !c?.reg_end || c.reg_end >= today
 
   const openClass = (cls) => {
     setSelected(cls)
@@ -50,6 +49,7 @@ export default function PublicClasses() {
 
   const doEnroll = async () => {
     if (!memberId || !selected) return
+    const regOpen = regOpenFor(selected)
     setEnrolling(true); setEnrollMsg(null)
     try {
       if (regOpen) await enrollMember(memberId, selected.id)
@@ -129,11 +129,13 @@ export default function PublicClasses() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        {cls.max_students != null && (
-                          full
-                            ? <Badge variant="danger">Full</Badge>
-                            : <span className="text-[11px] text-slate-400">{cls.enrolled}/{cls.max_students}</span>
-                        )}
+                        {cls.status === 'on_hold'
+                          ? <Badge variant="warning">On hold</Badge>
+                          : cls.max_students != null && (
+                            full
+                              ? <Badge variant="danger">Full</Badge>
+                              : <span className="text-[11px] text-slate-400">{cls.enrolled}/{cls.max_students}</span>
+                          )}
                         {cls.price != null && <span className="text-sm font-medium text-yellow-700">{money(cls.price)}</span>}
                         <ChevronRight size={15} className="text-slate-300" />
                       </div>
@@ -183,11 +185,12 @@ export default function PublicClasses() {
             {selected.description && <p className="text-sm text-slate-600 leading-relaxed mb-5">{selected.description}</p>}
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 bg-slate-50 rounded-xl p-4 mb-5">
               {[
+                ['Semester', `${selected.semester_name || '—'}${selected.is_current ? ' (current)' : ''}`],
                 ['Schedule', schedule(selected)],
                 ['Teacher', selected.teacher_name || 'To be announced'],
                 ['Room', selected.room || '—'],
                 ['Grade Range', selected.grade_level || 'All ages'],
-                ['Availability', selected.max_students != null
+                ['Availability', selected.status === 'on_hold' ? 'On hold' : selected.max_students != null
                   ? (isFull(selected) ? 'Full' : `${selected.enrolled}/${selected.max_students} enrolled`)
                   : 'Open'],
                 ['Tuition', selected.price != null ? `${money(selected.price)}/term` : '—'],
@@ -203,6 +206,8 @@ export default function PublicClasses() {
               <div className="border-t border-slate-100 pt-4">
                 {members.length === 0 ? (
                   <p className="text-sm text-slate-500">Add a member in your <Link to="/members" className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2">portal</Link> first, then enroll them here.</p>
+                ) : selected.status === 'on_hold' ? (
+                  <p className="text-sm text-amber-700 font-medium">This class is on hold — enrollment is paused.</p>
                 ) : isFull(selected) ? (
                   <p className="text-sm text-red-600 font-medium">This class is full.</p>
                 ) : (
@@ -214,10 +219,10 @@ export default function PublicClasses() {
                         {members.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.relationship})</option>)}
                       </select>
                       <Button variant="gold" disabled={enrolling || !memberId} onClick={doEnroll}>
-                        {enrolling ? 'Working…' : <><Check size={15} /> {regOpen ? 'Enroll' : 'Request'}</>}
+                        {enrolling ? 'Working…' : <><Check size={15} /> {regOpenFor(selected) ? 'Enroll' : 'Request'}</>}
                       </Button>
                     </div>
-                    {!regOpen && <p className="text-xs text-amber-700 mt-2">Registration has closed for {semester?.name} — this will be sent to an admin for approval.</p>}
+                    {!regOpenFor(selected) && <p className="text-xs text-amber-700 mt-2">Registration has closed for {selected.semester_name} — this will be sent to an admin for approval.</p>}
                   </>
                 )}
                 {enrollMsg && (

@@ -2,7 +2,7 @@ import { NavLink, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Megaphone, BookOpen, Clock,
   Home, CreditCard, Users, Settings, LogOut, GraduationCap,
-  ChevronLeft, ChevronRight, Inbox, BarChart3, CalendarDays
+  ChevronLeft, ChevronRight, Inbox, BarChart3, CalendarDays, FileText
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -25,6 +25,7 @@ const NAV_CONFIG = {
       { label: 'Families',     to: '/families',     icon: Home },
       { label: 'Users',        to: '/users',        icon: Users },
       { label: 'Reports',      to: '/reports',      icon: BarChart3 },
+      { label: 'About Pages',  to: '/about-pages',  icon: FileText },
     ]},
     { section: 'System', items: [
       { label: 'Settings',     to: '/settings',    icon: Settings },

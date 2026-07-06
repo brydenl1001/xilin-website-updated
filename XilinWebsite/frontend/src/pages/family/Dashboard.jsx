@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { BookOpen, Wallet, MessageSquare } from 'lucide-react'
 import { getOwnFamily, getOwnEnrollments, listAnnouncements } from '../../lib/supabaseClient'
-import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
+import { StatCard, Card, Badge, SectionHeader, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { money } from '../../lib/format'
 import { CAT_DOT } from '../../lib/categories'
+import { inActiveSemester } from '../../lib/schedule'
 
 export default function FamilyDashboard() {
   const { user } = useAuth()
@@ -32,7 +33,7 @@ export default function FamilyDashboard() {
       .finally(() => setLoading(false))
   }, [memberId])
 
-  const myClasses = enrollments.filter(e => e.status === 'enrolled')
+  const myClasses = enrollments.filter(e => e.status === 'enrolled' && inActiveSemester(e))
   const balance = Number(family?.balance || 0)
   const owes = balance < 0
 
@@ -85,7 +86,7 @@ export default function FamilyDashboard() {
           <SectionHeader title="Enrolled Classes"
             action={<Link to="/child-timetable" className="text-xs text-yellow-600 hover:text-yellow-700">Timetable</Link>} />
           {loading ? (
-            <p className="text-slate-400 text-sm py-6">Loading…</p>
+            <TableSkeleton rows={3} className="!p-0 py-3" />
           ) : myClasses.length === 0 ? (
             <p className="text-slate-400 text-sm py-6">No classes enrolled yet.</p>
           ) : (
@@ -112,7 +113,7 @@ export default function FamilyDashboard() {
           <SectionHeader title="Announcements"
             action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
           {loading ? (
-            <p className="text-slate-400 text-sm py-6">Loading…</p>
+            <TableSkeleton rows={3} className="!p-0 py-3" />
           ) : announcements.length === 0 ? (
             <p className="text-slate-400 text-sm py-6">No announcements yet.</p>
           ) : announcements.map(ann => (

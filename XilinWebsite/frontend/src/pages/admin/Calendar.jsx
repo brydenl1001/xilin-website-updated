@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Info } from 'lucide-react'
-import { listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getActiveSemester } from '../../lib/supabaseClient'
-import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar } from '../../components/ui'
+import { listCalendarEvents, createCalendarEvent, updateCalendarEvent, deleteCalendarEvent, getCurrentSemester } from '../../lib/supabaseClient'
+import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
+import { useFeedback } from '../../context/FeedbackContext'
 import { semesterEvents, EVENT_CAT } from '../../components/EventCalendar'
 
 const CATEGORY_OPTIONS = [
@@ -18,6 +19,7 @@ const BLANK = { title: '', description: '', event_date: '', end_date: '', catego
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : ''
 
 export default function AdminCalendar() {
+  const { toast, confirm } = useFeedback()
   const [events, setEvents] = useState([])
   const [semester, setSemester] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -29,7 +31,7 @@ export default function AdminCalendar() {
 
   const load = () => {
     setLoading(true)
-    Promise.all([listCalendarEvents(), getActiveSemester()])
+    Promise.all([listCalendarEvents(), getCurrentSemester()])
       .then(([evs, sem]) => { setEvents(evs); setSemester(sem) })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
@@ -65,9 +67,9 @@ export default function AdminCalendar() {
   }
 
   const remove = async (ev) => {
-    if (!window.confirm(`Delete "${ev.title}"? This cannot be undone.`)) return
-    try { await deleteCalendarEvent(ev.id); setEvents(prev => prev.filter(e => e.id !== ev.id)) }
-    catch (e) { alert(`Failed to delete: ${e.message}`) }
+    if (!(await confirm({ title: 'Delete event', message: `Delete "${ev.title}"? This cannot be undone.`, confirmLabel: 'Delete', danger: true }))) return
+    try { await deleteCalendarEvent(ev.id); setEvents(prev => prev.filter(e => e.id !== ev.id)); toast.success('Event deleted.') }
+    catch (e) { toast.error(`Failed to delete: ${e.message}`) }
   }
 
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
@@ -105,7 +107,7 @@ export default function AdminCalendar() {
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-12 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={6} />
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (

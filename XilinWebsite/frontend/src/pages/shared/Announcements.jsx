@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react'
 import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters, uploadAnnouncementMedia, announcementImages as imagesOf } from '../../lib/supabaseClient'
-import { Badge, Button, Modal, Input, Select, Textarea, PageHeader, ListToolbar } from '../../components/ui'
+import { Badge, Button, Modal, Input, Select, Textarea, PageHeader, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { useAuth } from '../../context/AuthContext'
+import { useFeedback } from '../../context/FeedbackContext'
 
 const CATS = ['all', 'urgent', 'events', 'academics', 'general']
 const BORDER = { urgent: 'border-l-red-400', events: 'border-l-amber-400', academics: 'border-l-blue-400', general: 'border-l-slate-300' }
@@ -16,6 +17,7 @@ const BLANK = { title: '', body: '', category: 'general', is_public: 'false', se
 
 export default function Announcements() {
   const { user } = useAuth()
+  const { toast, confirm } = useFeedback()
   const canCreate = ['admin', 'teacher'].includes(user?.role)
   const canManage = user?.role === 'admin'
   const [announcements, setAnnouncements] = useState([])
@@ -79,21 +81,23 @@ export default function Announcements() {
       else await createAnnouncement({ ...payload, author_id: user.id })
       setShowModal(false); setForm(BLANK); setEditingId(null)
       load()
+      toast.success(editingId ? 'Announcement updated.' : 'Announcement published.')
     } catch (err) {
-      alert(`Failed to save: ${err.message}`)
+      toast.error(`Failed to save: ${err.message}`)
     } finally {
       setSubmitting(false)
     }
   }
 
   const handleDelete = async (id) => {
-    if (!window.confirm('Delete this announcement? This cannot be undone.')) return
+    if (!(await confirm({ title: 'Delete announcement', message: 'Delete this announcement? This cannot be undone.', confirmLabel: 'Delete', danger: true }))) return
     setDeletingId(id)
     try {
       await deleteAnnouncement(id)
       setAnnouncements(prev => prev.filter(a => a.id !== id))
+      toast.success('Announcement deleted.')
     } catch (err) {
-      alert(`Failed to delete: ${err.message}`)
+      toast.error(`Failed to delete: ${err.message}`)
     } finally {
       setDeletingId(null)
     }
@@ -120,7 +124,7 @@ export default function Announcements() {
         sortOptions={SORT_OPTIONS} sortKey={sortKey} onSortKey={setSortKey} sortDir={sortDir} onToggleDir={toggleDir} />
 
       <div className="space-y-3">
-        {loading && <p className="text-center text-slate-400 py-12 text-sm">Loading…</p>}
+        {loading && <TableSkeleton rows={4} />}
         {error && <p className="text-center text-red-500 py-12 text-sm">Failed to load: {error}</p>}
         {!loading && !error && filtered.map(ann => (
           <div key={ann.id} onClick={() => setViewing(ann)}
@@ -149,7 +153,7 @@ export default function Announcements() {
             {imagesOf(ann).length > 0 && (
               <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-thin">
                 {imagesOf(ann).map((url, i) => (
-                  <img key={i} src={url} alt="" className="h-24 w-32 flex-shrink-0 object-cover rounded-lg border border-slate-100" />
+                  <img key={i} src={url} alt="" className="h-24 max-w-[200px] flex-shrink-0 object-contain rounded-lg border border-slate-100 bg-slate-50" />
                 ))}
               </div>
             )}
@@ -159,7 +163,7 @@ export default function Announcements() {
       </div>
 
       {/* View popup */}
-      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.title || 'Announcement'} maxWidth="max-w-2xl">
+      <Modal open={!!viewing} onClose={() => setViewing(null)} title={viewing?.title || 'Announcement'} maxWidth="max-w-3xl">
         {viewing && (
           <div className="space-y-3">
             <div className="flex items-center gap-2">
@@ -170,7 +174,7 @@ export default function Announcements() {
             {imagesOf(viewing).length > 0 && (
               <div className="space-y-3">
                 {imagesOf(viewing).map((url, i) => (
-                  <img key={i} src={url} alt="" className="rounded-lg w-full max-h-80 object-cover border border-slate-100" />
+                  <img key={i} src={url} alt="" className="rounded-lg max-w-full max-h-[70vh] mx-auto object-contain border border-slate-100 bg-slate-50" />
                 ))}
               </div>
             )}
@@ -204,7 +208,7 @@ export default function Announcements() {
               <div className="grid grid-cols-3 gap-2 mb-2">
                 {form.media_urls.map(url => (
                   <div key={url} className="relative">
-                    <img src={url} alt="" className="rounded-lg h-24 w-full object-cover border border-slate-200" />
+                    <img src={url} alt="" className="rounded-lg h-24 w-full object-contain border border-slate-200 bg-slate-50" />
                     <button type="button" onClick={() => removeImage(url)}
                       className="absolute top-1 right-1 bg-white/90 rounded-full p-0.5 text-slate-500 hover:text-red-500 shadow cursor-pointer" title="Remove image">
                       <X size={12} />

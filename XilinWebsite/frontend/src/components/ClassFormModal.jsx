@@ -25,8 +25,8 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
         max_students: editing.max_students ?? '', lead_teacher_id: leadOf(editing)?.id || '',
       })
     } else {
-      const activeSem = semesters.find(s => s.is_active)
-      setForm({ ...BLANK, semester_id: activeSem?.id || '' })
+      const defaultSem = semesters.find(s => s.is_current) || semesters.find(s => s.is_active)
+      setForm({ ...BLANK, semester_id: defaultSem?.id || '' })
     }
     setSaveError('')
   }, [open, editing, semesters])
@@ -73,7 +73,7 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
         <div className="grid grid-cols-2 gap-3">
           <Select label="Semester" id="semester" value={form.semester_id} onChange={set('semester_id')}>
             <option value="">Select…</option>
-            {semesters.map(s => <option key={s.id} value={s.id}>{s.name}{s.is_active ? ' (active)' : ''}</option>)}
+            {semesters.map(s => <option key={s.id} value={s.id}>{s.name}{s.is_current ? ' (current)' : ''}</option>)}
           </Select>
           <Input label="Class Name" id="name" placeholder="e.g. Beginner Mandarin — Sec A" value={form.name} onChange={set('name')} required />
         </div>

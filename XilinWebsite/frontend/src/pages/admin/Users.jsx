@@ -1,15 +1,14 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { Plus, KeyRound, Check, ArrowLeft, Mail, Phone, Hash, BookOpen, GraduationCap, Users as UsersIcon } from 'lucide-react'
+import { useParams, useNavigate, Link } from 'react-router-dom'
+import { Plus, KeyRound, Check, ArrowLeft, Mail, Phone, Hash, BookOpen, GraduationCap, Users as UsersIcon, Home } from 'lucide-react'
 import { listProfiles, listFamilies, createAccount, listClasses, getOwnEnrollments } from '../../lib/supabaseClient'
-import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar } from '../../components/ui'
+import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar, TableSkeleton } from '../../components/ui'
+import ClassScheduleList, { distinctSemesters, SemesterPicker } from '../../components/ClassScheduleList'
 import { useListControls } from '../../hooks/useListControls'
-import { fmtTime } from '../../lib/format'
+import { ROLE_VARIANT } from '../../lib/categories'
 
-const ROLE_VARIANT = { admin: 'navy', teacher: 'academics', student: 'success', parent: 'gold' }
 const SORT_OPTIONS = [{ key: 'full_name', label: 'Name' }, { key: 'role', label: 'Role' }]
 const ROLE_OPTIONS = ['admin', 'teacher', 'student']
-const money = (n) => `$${Number(n || 0).toFixed(2)}`
 
 const KINDS = [
   { val: 'staff',  label: 'Staff login',   hint: 'Admin or teacher who signs in directly' },
@@ -80,6 +79,7 @@ export default function AdminUsers() {
       familyId: f.id,
       familyName: f.family_name,
       familyCode: f.family_code,
+      familyUsername: f.username,
       email: f.email,
     }))
   )
@@ -99,7 +99,7 @@ export default function AdminUsers() {
   const memberRoleValue = form.role === 'admin' || form.role === 'teacher' ? 'student' : form.role
 
   if (id) {
-    if (loading) return <div className="max-w-5xl"><p className="py-12 text-center text-slate-400 text-sm">Loading…</p></div>
+    if (loading) return <div className="max-w-5xl"><Card className="!p-0 overflow-hidden"><TableSkeleton rows={6} /></Card></div>
     const selectedUser = allUsers.find(u => u.id === id)
     if (selectedUser) {
       return <UserDetail user={selectedUser} families={families} classes={classes} onBack={() => navigate('/users')} />
@@ -133,7 +133,7 @@ export default function AdminUsers() {
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-12 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={6} />
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
@@ -144,7 +144,7 @@ export default function AdminUsers() {
               <Tr key={u.id || i} onClick={() => u.id && navigate(`/users/${u.id}`)}>
                 <Td><p className="font-medium text-slate-900">{u.full_name}</p></Td>
                 <Td><Badge variant={ROLE_VARIANT[u.role]}>{u.role}</Badge></Td>
-                <Td className="text-slate-500 text-xs">{u.familyName || u.email}</Td>
+                <Td className="text-slate-500 text-xs">{u.familyUsername || u.familyName || u.email}</Td>
                 <Td><span className="text-xs text-yellow-600">View →</span></Td>
               </Tr>
             ))}
@@ -258,6 +258,7 @@ function UserDetail({ user, families, classes, onBack }) {
 
   const [enrollments, setEnrollments] = useState([])
   const [loading, setLoading] = useState(isMember)
+  const [semId, setSemId] = useState('')
 
   useEffect(() => {
     if (!isMember) return
@@ -270,7 +271,16 @@ function UserDetail({ user, families, classes, onBack }) {
     return () => { live = false }
   }, [user.id, isMember])
 
-  const enrolled = enrollments.filter(e => e.status === 'enrolled')
+  // A person's classes: teachers see what they teach, members see enrollments.
+  const scheduleClasses = isTeacher
+    ? teaching
+    : enrollments.filter(e => e.status === 'enrolled').map(e => e.classes).filter(Boolean)
+  const semesters = distinctSemesters(scheduleClasses)
+  useEffect(() => {
+    setSemId(prev => (prev && semesters.some(s => s.id === prev)) ? prev : (semesters.find(s => s.is_current) || semesters[0])?.id || '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enrollments, user.id, teaching.length])
+  const shown = scheduleClasses.filter(c => c.semester_id === semId)
 
   return (
     <div className="max-w-4xl animate-fade-in">
@@ -299,6 +309,11 @@ function UserDetail({ user, families, classes, onBack }) {
               )}
             </div>
           </div>
+          {family && (
+            <Link to={`/families/${family.id}`}>
+              <Button variant="outline" size="sm" className="!border-yellow-400/50 !text-yellow-400 hover:!bg-yellow-400/10"><Home size={13} /> View Family</Button>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -307,58 +322,22 @@ function UserDetail({ user, families, classes, onBack }) {
         <Card><p className="text-sm text-slate-500 py-2 text-center">Administrator account with full portal access.</p></Card>
       )}
 
-      {isTeacher && (
+      {(isTeacher || isMember) && (
         <>
-          <h3 className="font-display text-lg text-slate-900 mb-3 flex items-center gap-2"><GraduationCap size={18} className="text-yellow-600" /> Classes Taught</h3>
-          {teaching.length === 0 ? (
-            <Card><p className="text-sm text-slate-400 py-4 text-center">Not assigned to any classes yet.</p></Card>
-          ) : (
-            <div className="space-y-2">
-              {teaching.map(c => {
-                const role = (c.class_teachers || []).find(ct => ct.profiles?.id === user.id)?.role
-                return (
-                  <Card key={c.id} className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-medium text-slate-900">{c.name}</p>
-                      <p className="text-xs text-slate-400">
-                        {c.courses?.name || '—'}
-                        {c.day_of_week ? ` · ${c.day_of_week} ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}` : ''}
-                        {c.room ? ` · ${c.room}` : ''}
-                      </p>
-                    </div>
-                    {role && <Badge variant={role === 'lead' ? 'gold' : 'default'}>{role}</Badge>}
-                  </Card>
-                )
-              })}
-            </div>
-          )}
-        </>
-      )}
-
-      {isMember && (
-        <>
-          <h3 className="font-display text-lg text-slate-900 mb-3 flex items-center gap-2"><BookOpen size={18} className="text-yellow-600" /> Enrolled Classes</h3>
-          {loading ? (
-            <Card><p className="text-sm text-slate-400 py-4 text-center">Loading classes…</p></Card>
-          ) : enrolled.length === 0 ? (
-            <Card><p className="text-sm text-slate-400 py-4 text-center">Not enrolled in any classes.</p></Card>
-          ) : (
-            <div className="space-y-2">
-              {enrolled.map(e => (
-                <Card key={e.id} className="flex items-center justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-slate-900">{e.classes?.name || e.classes?.courses?.name || 'Class'}</p>
-                    <p className="text-xs text-slate-400">
-                      {e.classes?.courses?.name || '—'}
-                      {e.classes?.day_of_week ? ` · ${e.classes.day_of_week} ${fmtTime(e.classes.start_time)}${e.classes.end_time ? `–${fmtTime(e.classes.end_time)}` : ''}` : ''}
-                    </p>
-                  </div>
-                  {e.price_charged != null && <span className="text-sm font-medium text-yellow-700">{money(e.price_charged)}</span>}
-                </Card>
-              ))}
-            </div>
-          )}
-          {family && (
+          <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+            <h3 className="font-display text-lg text-slate-900 flex items-center gap-2">
+              {isTeacher
+                ? <><GraduationCap size={18} className="text-yellow-600" /> Teaching Schedule</>
+                : <><BookOpen size={18} className="text-yellow-600" /> Timetable</>}
+            </h3>
+            <SemesterPicker semesters={semesters} value={semId} onChange={setSemId} className="w-48" />
+          </div>
+          <Card className="!p-0 overflow-hidden">
+            {loading
+              ? <TableSkeleton rows={4} />
+              : <ClassScheduleList classes={shown} empty={isTeacher ? 'Not assigned to any classes.' : 'Not enrolled in any classes.'} />}
+          </Card>
+          {isMember && family && (
             <p className="text-xs text-slate-400 mt-4">
               This member belongs to <span className="font-medium text-slate-600">{family.family_name}</span> and signs in through the family account — manage enrollments and balance from the Families page.
             </p>

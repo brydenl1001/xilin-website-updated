@@ -21,6 +21,7 @@ const PAGE_TITLES = {
   '/my-classes':      'My Classes',
   '/payments':        'Payments',
   '/users':           'User Management',
+  '/about-pages':     'About Pages',
   '/settings':        'Settings',
 }
 
@@ -119,7 +120,12 @@ function NotificationsBell() {
 
 export default function Topbar({ onSidebarToggle, pathname }) {
   const { user } = useAuth()
-  const title = PAGE_TITLES[pathname] || (pathname.startsWith('/class/') ? 'Class Details' : 'Portal')
+  const subtitleFor = pathname.startsWith('/class/') ? 'Class Details'
+    : pathname.startsWith('/members/') ? 'Member'
+    : pathname.startsWith('/users/') ? 'User'
+    : pathname.startsWith('/families/') ? 'Family'
+    : 'Portal'
+  const title = PAGE_TITLES[pathname] || subtitleFor
 
   return (
     <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 flex-shrink-0 gap-4">

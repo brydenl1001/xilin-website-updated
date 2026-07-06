@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { schoolInfo } from '../../lib/basicInfo'
-import { listPublicAnnouncements, listAnnouncements, getPublicStats, getActiveSemester, listCalendarEvents, announcementImages } from '../../lib/supabaseClient'
+import { listPublicAnnouncements, listAnnouncements, getPublicStats, listSemesters, listCalendarEvents, announcementImages } from '../../lib/supabaseClient'
 import { Button } from '../../components/ui'
 import EventCalendar, { semesterEvents } from '../../components/EventCalendar'
 import { ArrowRight, Mail, Globe, BookOpen, Users, GraduationCap } from 'lucide-react'
@@ -14,7 +14,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0, classCount: 0 })
   const [calEvents, setCalEvents] = useState([])
-  const [activeSem, setActiveSem] = useState(null)
+  const [semesters, setSemesters] = useState([])
 
   useEffect(() => {
     // Signed-in users see internal announcements too.
@@ -25,15 +25,17 @@ export default function Home() {
     getPublicStats()
       .then(setStats)
       .catch(err => console.error('Failed to load stats:', err))
-    getActiveSemester().then(setActiveSem).catch(() => {})
+    listSemesters().then(setSemesters).catch(() => {})
     listCalendarEvents().then(setCalEvents).catch(() => {})
   }, [user])
 
+  const currentSem = semesters.find(s => s.is_current) || semesters.find(s => s.is_active) || semesters[0] || null
+  // Show milestones for every visible semester, plus admin-managed events.
   const calendarEvents = [
-    ...semesterEvents(activeSem),
+    ...semesters.flatMap(semesterEvents),
     ...calEvents.map(e => ({ date: e.event_date, endDate: e.end_date, title: e.title, category: e.category, description: e.description })),
   ]
-  const calInitial = activeSem?.registration_start || calEvents[0]?.event_date || undefined
+  const calInitial = currentSem?.registration_start || calEvents[0]?.event_date || undefined
 
   return (
     <div>
@@ -120,7 +122,7 @@ export default function Home() {
               <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-1">Dates</p>
               <h2 className="font-display text-2xl text-slate-900">School Calendar</h2>
             </div>
-            {activeSem && <span className="text-sm text-slate-400">{activeSem.name}</span>}
+            {currentSem && <span className="text-sm text-slate-400">{currentSem.name}</span>}
           </div>
           <EventCalendar key={calInitial || 'cal'} events={calendarEvents} initialDate={calInitial} />
         </div>
@@ -147,7 +149,7 @@ export default function Home() {
               const imgs = announcementImages(ann)
               return (
               <Link key={ann.id} to="/news" className="bg-white rounded-xl border border-slate-200 hover:border-yellow-300 transition-colors cursor-pointer overflow-hidden flex flex-col">
-                {imgs[0] && <img src={imgs[0]} alt="" className="w-full h-40 object-cover" />}
+                {imgs[0] && <img src={imgs[0]} alt="" className="w-full h-40 object-contain bg-slate-50" />}
                 <div className="p-5 flex-1">
                   <div className="flex items-center justify-between mb-3">
                     <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full ${CAT_COLOR[ann.category]}`}>

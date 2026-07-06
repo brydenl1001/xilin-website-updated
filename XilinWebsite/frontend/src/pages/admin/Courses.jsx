@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil } from 'lucide-react'
 import { listCourses, createCourse, updateCourse } from '../../lib/supabaseClient'
-import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar } from '../../components/ui'
+import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { SUBJECT_AREAS } from '../../lib/categories'
 
@@ -74,7 +74,7 @@ export default function AdminCourses() {
 
       <Card className="!p-0 overflow-hidden">
         {loading ? (
-          <p className="py-12 text-center text-slate-400 text-sm">Loading…</p>
+          <TableSkeleton rows={6} />
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (

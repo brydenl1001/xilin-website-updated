@@ -1,121 +1,222 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { schoolInfo, boardMembers } from '../../lib/basicInfo'
-import { listSemesters } from '../../lib/supabaseClient'
-import { Button } from '../../components/ui'
-import { ArrowRight, Mail, Globe, CalendarDays, Target, Users, Phone } from 'lucide-react'
+import { listAboutPages, listSemesters } from '../../lib/supabaseClient'
+import { Button, TableSkeleton } from '../../components/ui'
+import { GROUP_ORDER, pathFor } from '../../lib/aboutNav'
+import { ArrowRight, Mail, Globe, Phone } from 'lucide-react'
 
 const initials = (name) => name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
 
-export default function PublicAbout() {
+// ─── Minimal text renderer ────────────────────────────────────────────────────
+// Supports: blank line = paragraph · "## " / "### " headings · "- " bullets ·
+// **bold** · [link text](url). Keeps admins out of raw HTML.
+function renderInline(text) {
+  const nodes = []
+  const re = /\[([^\]]+)\]\(([^)\s]+)\)|\*\*([^*]+)\*\*/g
+  let last = 0, m, i = 0
+  while ((m = re.exec(text))) {
+    if (m.index > last) nodes.push(text.slice(last, m.index))
+    if (m[1]) nodes.push(
+      <a key={i++} href={m[2]} target="_blank" rel="noreferrer"
+        className="text-yellow-700 font-medium underline underline-offset-2 hover:text-yellow-800">{m[1]}</a>
+    )
+    else nodes.push(<strong key={i++} className="font-semibold text-slate-800">{m[3]}</strong>)
+    last = re.lastIndex
+  }
+  if (last < text.length) nodes.push(text.slice(last))
+  return nodes
+}
+
+function renderBody(body) {
+  const blocks = []
+  let para = [], list = null, key = 0
+  const flushPara = () => {
+    if (para.length) blocks.push(<p key={key++} className="text-[15px] text-slate-600 leading-relaxed mb-4">{renderInline(para.join(' '))}</p>)
+    para = []
+  }
+  const flushList = () => {
+    if (list?.length) blocks.push(
+      <ul key={key++} className="list-disc pl-5 space-y-1.5 text-[15px] text-slate-600 leading-relaxed mb-4">
+        {list.map((item, i) => <li key={i}>{renderInline(item)}</li>)}
+      </ul>
+    )
+    list = null
+  }
+  for (const raw of (body || '').split(/\r?\n/)) {
+    const line = raw.trim()
+    if (line.startsWith('## ')) {
+      flushPara(); flushList()
+      blocks.push(<h2 key={key++} className="font-display text-xl text-slate-900 mt-7 mb-2.5 first:mt-0">{renderInline(line.slice(3))}</h2>)
+    } else if (line.startsWith('### ')) {
+      flushPara(); flushList()
+      blocks.push(<h3 key={key++} className="font-display text-base font-semibold text-slate-900 mt-5 mb-2 first:mt-0">{renderInline(line.slice(4))}</h3>)
+    } else if (line.startsWith('- ')) {
+      flushPara()
+      if (!list) list = []
+      list.push(line.slice(2))
+    } else if (line === '') {
+      flushPara(); flushList()
+    } else {
+      flushList()
+      para.push(line)
+    }
+  }
+  flushPara(); flushList()
+  return blocks
+}
+
+// ─── Per-page extras (rendered below the editable body) ──────────────────────
+function SemesterDates() {
   const [semesters, setSemesters] = useState([])
   useEffect(() => { listSemesters().then(setSemesters).catch(() => {}) }, [])
-  const active = semesters.find(s => s.is_active) || semesters[0]
+  const sem = semesters.find(s => s.is_current) || semesters.find(s => s.is_active) || semesters[0]
+  if (!sem) return null
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 mt-8">
+      <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-1">Calendar</p>
+      <p className="font-display text-lg text-slate-900 mb-4">{sem.name}{sem.academic_year ? ` · ${sem.academic_year}` : ''}</p>
+      <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
+        {[
+          ['Registration opens', sem.registration_start],
+          ['Registration closes', sem.registration_end],
+          ['Classes begin', sem.class_start],
+          ['Classes end', sem.class_end],
+        ].map(([label, d]) => (
+          <div key={label} className="flex justify-between border-b border-slate-100 pb-2">
+            <span className="text-sm text-slate-500">{label}</span>
+            <span className="text-sm font-medium text-slate-900">{fmtDate(d)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function BoardCards() {
+  return (
+    <div className="grid sm:grid-cols-2 gap-5 mt-8">
+      {boardMembers.map((m, i) => (
+        <div key={i} className="bg-white rounded-2xl border border-slate-200 p-6 flex items-start gap-4">
+          {m.photo
+            ? <img src={m.photo} alt={m.name} className="w-20 h-20 rounded-2xl object-cover flex-shrink-0 border border-slate-200" />
+            : <div className="w-20 h-20 rounded-2xl bg-navy text-yellow-400 font-display text-2xl flex items-center justify-center flex-shrink-0">{initials(m.name)}</div>}
+          <div className="min-w-0">
+            <p className="font-display text-lg text-slate-900">{m.name}</p>
+            <p className="text-xs text-yellow-600 uppercase tracking-wide mb-2">{m.role}</p>
+            <div className="flex flex-col gap-1 text-xs text-slate-600">
+              {m.email && <a href={`mailto:${m.email}`} className="flex items-center gap-1.5 hover:text-yellow-700"><Mail size={12} className="text-yellow-600" />{m.email}</a>}
+              {m.phone && <span className="flex items-center gap-1.5"><Phone size={12} className="text-yellow-600" />{m.phone}</span>}
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ContactCard() {
+  return (
+    <div className="bg-navy rounded-2xl p-6 mt-8 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-2 text-sm text-slate-300">
+        <a href={`mailto:${schoolInfo.email}`} className="flex items-center gap-2 hover:text-white"><Mail size={14} className="text-yellow-400" />{schoolInfo.email}</a>
+        <a href={`https://${schoolInfo.website}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white"><Globe size={14} className="text-yellow-400" />{schoolInfo.website}</a>
+      </div>
+      <Link to="/enroll"><Button variant="gold">Enroll Today <ArrowRight size={15} /></Button></Link>
+    </div>
+  )
+}
+
+const EXTRAS = { 'about-us': SemesterDates, 'school-board': BoardCards, 'contact-us': ContactCard }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
+export default function PublicAbout() {
+  const { slug } = useParams()
+  const navigate = useNavigate()
+  const activeSlug = slug || 'about-us'
+
+  const [pages, setPages] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    listAboutPages().then(setPages).catch(e => setError(e.message)).finally(() => setLoading(false))
+  }, [])
+
+  const page = pages.find(p => p.slug === activeSlug)
+  const groups = GROUP_ORDER
+    .map(g => ({ group: g, items: pages.filter(p => p.nav_group === g).sort((a, b) => a.sort_order - b.sort_order) }))
+    .filter(g => g.items.length > 0)
+  const Extra = EXTRAS[activeSlug]
 
   return (
     <div>
-      {/* Header */}
-      <section className="bg-navy text-white py-20 px-6">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-yellow-400 font-zh text-sm tracking-widest mb-3">{schoolInfo.nameZh}</p>
-          <h1 className="font-display text-4xl md:text-5xl mb-4">About {schoolInfo.name}</h1>
-          <p className="text-slate-300 text-lg max-w-2xl leading-relaxed">
-            A community dedicated to teaching Mandarin Chinese language and culture to learners of all
-            ages and backgrounds{schoolInfo.founded ? `, proudly serving families since ${schoolInfo.founded}` : ''}.
-          </p>
+      {/* Header band */}
+      <section className="bg-navy text-white py-12 px-6">
+        <div className="max-w-6xl mx-auto">
+          <p className="text-yellow-400 font-zh text-sm tracking-widest mb-2">{schoolInfo.nameZh}</p>
+          <h1 className="font-display text-3xl md:text-4xl">About {schoolInfo.shortName}</h1>
         </div>
       </section>
 
-      {/* Mission */}
-      <section className="max-w-5xl mx-auto px-6 py-16 grid md:grid-cols-3 gap-10">
-        <div>
-          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center mb-3"><Target size={18} className="text-yellow-600" /></div>
-          <h2 className="font-display text-xl text-slate-900 mb-2">Our Mission</h2>
-          <p className="text-slate-500 text-sm leading-relaxed">To inspire a lifelong love of the Chinese language and culture, and to build a welcoming community where every learner can grow with confidence.</p>
+      <div className="max-w-6xl mx-auto px-6 py-10">
+        {/* Mobile topic picker */}
+        <div className="md:hidden mb-6">
+          <label className="block text-xs font-medium text-slate-600 mb-1.5">Topic</label>
+          <select value={activeSlug} onChange={e => navigate(pathFor(e.target.value))}
+            className="w-full px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-500">
+            {groups.map(({ group, items }) => (
+              <optgroup key={group} label={group}>
+                {items.map(p => <option key={p.slug} value={p.slug}>{p.title}</option>)}
+              </optgroup>
+            ))}
+          </select>
         </div>
-        <div>
-          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center mb-3"><Users size={18} className="text-yellow-600" /></div>
-          <h2 className="font-display text-xl text-slate-900 mb-2">Who We Serve</h2>
-          <p className="text-slate-500 text-sm leading-relaxed">Children and adults alike — beginners taking their first words, and experienced speakers deepening their fluency and connection to heritage.</p>
-        </div>
-        <div>
-          <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center mb-3"><CalendarDays size={18} className="text-yellow-600" /></div>
-          <h2 className="font-display text-xl text-slate-900 mb-2">Weekend Classes</h2>
-          <p className="text-slate-500 text-sm leading-relaxed">Classes are held on Sundays across language, arts, music, and more — taught by experienced, caring teachers.</p>
-        </div>
-      </section>
 
-      {/* Leadership */}
-      <section className="bg-slate-100/60 py-16 px-6">
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10">
-            <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-2">Leadership</p>
-            <h2 className="font-display text-3xl text-slate-900">Our Board</h2>
-            <p className="text-slate-500 text-sm mt-2 max-w-xl mx-auto">Meet the volunteers who guide Xilin — reach out anytime with questions.</p>
-          </div>
-          <div className="grid sm:grid-cols-2 gap-8">
-            {boardMembers.map((m, i) => (
-              <div key={i} className="bg-white rounded-2xl border border-slate-200 p-8 flex flex-col sm:flex-row items-center sm:items-start gap-6 text-center sm:text-left">
-                {m.photo
-                  ? <img src={m.photo} alt={m.name} className="w-28 h-28 rounded-2xl object-cover flex-shrink-0 border border-slate-200" />
-                  : <div className="w-28 h-28 rounded-2xl bg-navy text-yellow-400 font-display text-3xl flex items-center justify-center flex-shrink-0">{initials(m.name)}</div>}
-                <div className="min-w-0">
-                  <p className="font-display text-2xl text-slate-900">{m.name}</p>
-                  <p className="text-xs text-yellow-600 uppercase tracking-wide mb-3">{m.role}</p>
-                  <p className="text-sm text-slate-500 leading-relaxed mb-4">{m.bio}</p>
-                  <div className="flex flex-col gap-1.5 text-sm">
-                    {m.email && <a href={`mailto:${m.email}`} className="flex items-center justify-center sm:justify-start gap-2 text-slate-600 hover:text-yellow-700 transition-colors"><Mail size={14} className="text-yellow-600 flex-shrink-0" />{m.email}</a>}
-                    {m.phone && <span className="flex items-center justify-center sm:justify-start gap-2 text-slate-600"><Phone size={14} className="text-yellow-600 flex-shrink-0" />{m.phone}</span>}
-                  </div>
+        <div className="flex gap-10 items-start">
+          {/* Sidebar */}
+          <aside className="hidden md:block w-60 flex-shrink-0 sticky top-24">
+            {groups.map(({ group, items }) => (
+              <div key={group} className="mb-5">
+                <p className="text-[10px] font-medium uppercase tracking-widest text-slate-400 mb-1.5 px-3">{group}</p>
+                <div className="space-y-0.5">
+                  {items.map(p => (
+                    <Link key={p.slug} to={pathFor(p.slug)}
+                      className={`block px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        p.slug === activeSlug
+                          ? 'bg-yellow-50 text-yellow-800 font-medium'
+                          : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
+                      }`}>
+                      {p.title}
+                    </Link>
+                  ))}
                 </div>
               </div>
             ))}
-          </div>
-        </div>
-      </section>
+          </aside>
 
-      {/* Calendar */}
-      <section className="max-w-5xl mx-auto px-6 py-16">
-        <div className="text-center mb-8">
-          <p className="text-yellow-600 text-xs uppercase tracking-widest font-medium mb-2">Calendar</p>
-          <h2 className="font-display text-3xl text-slate-900">Semester Dates</h2>
+          {/* Content */}
+          <main className="flex-1 min-w-0 max-w-3xl">
+            {loading ? (
+              <TableSkeleton rows={5} className="!p-0 py-4" />
+            ) : error ? (
+              <p className="text-red-500 text-sm py-12">Failed to load: {error}</p>
+            ) : !page ? (
+              <div className="py-12">
+                <p className="text-slate-500 text-sm mb-3">That page doesn't exist.</p>
+                <Link to="/about" className="text-yellow-600 hover:text-yellow-700 text-sm font-medium underline underline-offset-2">Back to About Us</Link>
+              </div>
+            ) : (
+              <article className="animate-fade-in">
+                <h2 className="font-display text-3xl text-slate-900 mb-6">{page.title}</h2>
+                {renderBody(page.body)}
+                {Extra && <Extra />}
+              </article>
+            )}
+          </main>
         </div>
-        {active ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-8 max-w-2xl mx-auto">
-            <p className="font-display text-xl text-slate-900 mb-5">{active.name}{active.academic_year ? ` · ${active.academic_year}` : ''}</p>
-            <div className="grid sm:grid-cols-2 gap-x-8 gap-y-4">
-              {[
-                ['Registration opens', active.registration_start],
-                ['Registration closes', active.registration_end],
-                ['Classes begin', active.class_start],
-                ['Classes end', active.class_end],
-              ].map(([label, d]) => (
-                <div key={label} className="flex justify-between border-b border-slate-100 pb-2">
-                  <span className="text-sm text-slate-500">{label}</span>
-                  <span className="text-sm font-medium text-slate-900">{fmtDate(d)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className="text-center text-slate-400 text-sm">Semester dates will be posted soon.</p>
-        )}
-      </section>
-
-      {/* Contact + CTA */}
-      <section className="bg-navy text-white py-14 px-6">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <h2 className="font-display text-2xl mb-3">Get in touch</h2>
-            <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-slate-300">
-              <span className="flex items-center gap-2"><Mail size={14} className="text-yellow-400" />{schoolInfo.email}</span>
-              <a href={`https://${schoolInfo.website}`} target="_blank" rel="noreferrer" className="flex items-center gap-2 hover:text-white"><Globe size={14} className="text-yellow-400" />{schoolInfo.website}</a>
-            </div>
-          </div>
-          <Link to="/enroll"><Button variant="gold" size="lg">Enroll Today <ArrowRight size={16} /></Button></Link>
-        </div>
-      </section>
+      </div>
     </div>
   )
 }

@@ -91,7 +91,7 @@ export default function PublicNews() {
             {imgs.length > 0 && (
               <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-thin">
                 {imgs.map((url, i) => (
-                  <img key={i} src={url} alt="" className="h-28 w-40 flex-shrink-0 object-cover rounded-lg border border-slate-100" />
+                  <img key={i} src={url} alt="" className="h-28 max-w-[220px] flex-shrink-0 object-contain rounded-lg border border-slate-100 bg-slate-50" />
                 ))}
               </div>
             )}
@@ -104,7 +104,7 @@ export default function PublicNews() {
       {selected && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSelected(null)}>
           <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm" />
-          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[88vh] overflow-y-auto p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6 animate-fade-in" onClick={e => e.stopPropagation()}>
             <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-slate-300 hover:text-slate-600 cursor-pointer"><X size={18} /></button>
             <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full capitalize ${CAT_BADGE[selected.category]}`}>{selected.category}</span>
             <h2 className="font-display text-2xl text-slate-900 mt-3 mb-1">{selected.title}</h2>
@@ -112,7 +112,7 @@ export default function PublicNews() {
             {images(selected).length > 0 && (
               <div className="space-y-3 mb-4">
                 {images(selected).map((url, i) => (
-                  <img key={i} src={url} alt="" className="rounded-lg w-full max-h-80 object-cover border border-slate-100" />
+                  <img key={i} src={url} alt="" className="rounded-lg max-w-full max-h-[70vh] mx-auto object-contain border border-slate-100 bg-slate-50" />
                 ))}
               </div>
             )}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { BookOpen, Megaphone } from 'lucide-react'
 import { listMyClasses, listAnnouncements } from '../../lib/supabaseClient'
-import { StatCard, Card, Badge, SectionHeader } from '../../components/ui'
+import { StatCard, Card, Badge, SectionHeader, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { CAT_DOT } from '../../lib/categories'
@@ -54,7 +54,7 @@ export default function TeacherDashboard() {
           <SectionHeader title="My Classes"
             action={<Link to="/my-classes" className="text-xs text-yellow-600 hover:text-yellow-700">Manage</Link>} />
           {loading ? (
-            <p className="text-slate-400 text-sm py-6">Loading…</p>
+            <TableSkeleton rows={3} className="!p-0 py-3" />
           ) : classes.length === 0 ? (
             <p className="text-slate-400 text-sm py-6">No classes assigned yet.</p>
           ) : (
@@ -78,7 +78,7 @@ export default function TeacherDashboard() {
           <SectionHeader title="Announcements"
             action={<Link to="/announcements" className="text-xs text-yellow-600 hover:text-yellow-700">View all</Link>} />
           {loading ? (
-            <p className="text-slate-400 text-sm py-6">Loading…</p>
+            <TableSkeleton rows={3} className="!p-0 py-3" />
           ) : announcements.length === 0 ? (
             <p className="text-slate-400 text-sm py-6">No announcements yet.</p>
           ) : announcements.map(ann => (

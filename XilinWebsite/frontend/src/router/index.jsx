@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from '../context/AuthContext'
+import { FeedbackProvider } from '../context/FeedbackContext'
 import DashboardLayout from '../components/layout/DashboardLayout'
 import PublicLayout from '../components/layout/PublicLayout'
 
@@ -10,6 +11,7 @@ import PublicNews    from '../pages/public/PublicNews'
 import PublicClasses from '../pages/public/PublicClasses'
 import PublicEnroll  from '../pages/public/PublicEnroll'
 import Login         from '../pages/public/Login'
+import NotFound      from '../pages/public/NotFound'
 
 // Shared portal pages
 import Announcements from '../pages/shared/Announcements'
@@ -27,6 +29,7 @@ import AdminReports     from '../pages/admin/Reports'
 import AdminFamilies    from '../pages/admin/Families'
 import AdminUsers       from '../pages/admin/Users'
 import AdminCalendar    from '../pages/admin/Calendar'
+import AdminAboutPages  from '../pages/admin/AboutPages'
 
 // Teacher pages
 import TeacherDashboard  from '../pages/teacher/Dashboard'
@@ -36,12 +39,15 @@ import TeacherMyClasses  from '../pages/teacher/MyClasses'
 import FamilyDashboard       from '../pages/family/Dashboard'
 import FamilyPayments        from '../pages/family/Payments'
 import FamilyMembers         from '../pages/family/Members'
+import FamilyMemberDetail    from '../pages/family/MemberDetail'
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
   const { user, loading } = useAuth()
   if (loading) return <div className="flex items-center justify-center h-screen text-slate-400 text-sm">Loading…</div>
-  return user ? children : <Navigate to="/login" replace />
+  // Logged-out visitors on an unknown/portal URL get a friendly 404 with a
+  // sign-in path, instead of being silently dumped on the login page.
+  return user ? children : <PublicLayout><NotFound /></PublicLayout>
 }
 
 function RedirectIfAuth({ children }) {
@@ -84,6 +90,7 @@ function PortalRoutes() {
           <Route path="/families/:id" element={<AdminFamilies />} />
           <Route path="/users"       element={<AdminUsers />} />
           <Route path="/users/:id"   element={<AdminUsers />} />
+          <Route path="/about-pages" element={<AdminAboutPages />} />
         </>}
 
         {/* Teacher */}
@@ -95,6 +102,7 @@ function PortalRoutes() {
         {/* Family (household) */}
         {role === 'family' && <>
           <Route path="/members"           element={<FamilyMembers />} />
+          <Route path="/members/:id"       element={<FamilyMemberDetail />} />
           <Route path="/child-timetable"   element={<Timetable subtitle="Weekly class schedule" />} />
           <Route path="/payments"          element={<FamilyPayments />} />
         </>}
@@ -114,6 +122,7 @@ function AppRoutes() {
       {/* Public site */}
       <Route path="/" element={<PublicLayout><Home /></PublicLayout>} />
       <Route path="/about" element={<PublicLayout><PublicAbout /></PublicLayout>} />
+      <Route path="/about/:slug" element={<PublicLayout><PublicAbout /></PublicLayout>} />
       <Route path="/news" element={<PublicLayout><PublicNews /></PublicLayout>} />
       <Route path="/classes" element={<PublicLayout><PublicClasses /></PublicLayout>} />
       <Route path="/enroll" element={<PublicLayout><PublicEnroll /></PublicLayout>} />
@@ -129,7 +138,9 @@ export default function AppRouter() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <FeedbackProvider>
+          <AppRoutes />
+        </FeedbackProvider>
       </AuthProvider>
     </BrowserRouter>
   )

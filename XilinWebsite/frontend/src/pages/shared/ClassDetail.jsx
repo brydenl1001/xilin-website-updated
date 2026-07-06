@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getClass, getClassRoster, listCourses, listSemesters, listProfiles, deleteClass } from '../../lib/supabaseClient'
-import { Card, Badge, Button } from '../../components/ui'
+import { getClass, getClassRoster, listCourses, listSemesters, listProfiles, setClassStatus } from '../../lib/supabaseClient'
+import { Card, Badge, Button, TableSkeleton } from '../../components/ui'
 import ClassFormModal from '../../components/ClassFormModal'
 import { useAuth } from '../../context/AuthContext'
+import { useFeedback } from '../../context/FeedbackContext'
 import { fmtTime, money } from '../../lib/format'
-import { ArrowLeft, Clock, MapPin, Users, Pencil, Trash2 } from 'lucide-react'
+import { CLASS_STATUS_BADGE as STATUS_BADGE, CLASS_STATUS_LABEL as STATUS_LABEL } from '../../lib/categories'
+import { ArrowLeft, Clock, MapPin, Users, Pencil } from 'lucide-react'
 
-const leadOf = (c) => c?.class_teachers?.find(ct => ct.role === 'lead')?.profiles?.full_name
 const schedule = (c) => c?.day_of_week
   ? `${c.day_of_week} ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}`
   : 'Sundays'
@@ -16,6 +17,7 @@ export default function ClassDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { toast, confirm } = useFeedback()
 
   const isAdmin = user.role === 'admin'
   const [cls, setCls] = useState(null)
@@ -23,7 +25,7 @@ export default function ClassDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [editOpen, setEditOpen] = useState(false)
-  const [deleting, setDeleting] = useState(false)
+  const [statusBusy, setStatusBusy] = useState(false)
   const [ref, setRef] = useState({ courses: [], semesters: [], teachers: [] }) // for the admin edit form
 
   const loadRoster = async () => {
@@ -50,18 +52,26 @@ export default function ClassDetail() {
     return () => { live = false }
   }, [id, user.id, user.role])
 
-  const doDelete = async () => {
-    if (!window.confirm(`Delete "${cls.name}"? This cannot be undone.`)) return
-    setDeleting(true)
+  const changeStatus = async (newStatus) => {
+    if (!cls || newStatus === cls.status) return
+    if (newStatus === 'canceled' && !(await confirm({
+      title: 'Cancel class',
+      message: `Cancel "${cls.name}"? Everyone still enrolled will be dropped and given prorated credit.`,
+      confirmLabel: 'Cancel class', danger: true,
+    }))) return
+    setStatusBusy(true)
     try {
-      await deleteClass(id)
-      navigate('/manage-classes')
+      await setClassStatus(id, newStatus)
+      await loadClass()
+      toast.success(`Class marked ${STATUS_LABEL[newStatus].toLowerCase()}.`)
     } catch (err) {
-      alert(err.message)
-      setDeleting(false)
+      toast.error(err.message)
+    } finally {
+      setStatusBusy(false)
     }
   }
 
+  const leadProfile = cls?.class_teachers?.find(ct => ct.role === 'lead')?.profiles
   const cap = cls?.max_students
   const availability = roster
     ? `${roster.length}${cap != null ? ` / ${cap}` : ''} enrolled`
@@ -74,15 +84,21 @@ export default function ClassDetail() {
           <ArrowLeft size={15} /> Back
         </button>
         {isAdmin && cls && (
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <select value={cls.status} disabled={statusBusy} onChange={e => changeStatus(e.target.value)}
+              title="Class status"
+              className="text-xs border border-slate-200 rounded-lg px-2 h-8 bg-white outline-none text-slate-700 cursor-pointer disabled:opacity-50">
+              <option value="active">Active</option>
+              <option value="on_hold">On hold</option>
+              <option value="canceled">Canceled</option>
+            </select>
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil size={13} /> Edit</Button>
-            <Button variant="outline" size="sm" disabled={deleting} className="!text-red-600 hover:!bg-red-50" onClick={doDelete}><Trash2 size={13} /> {deleting ? 'Deleting…' : 'Delete'}</Button>
           </div>
         )}
       </div>
 
       {loading ? (
-        <p className="text-slate-400 text-sm text-center py-12">Loading…</p>
+        <TableSkeleton rows={6} />
       ) : error ? (
         <p className="text-red-500 text-sm text-center py-12">Failed to load: {error}</p>
       ) : !cls ? (
@@ -92,7 +108,10 @@ export default function ClassDetail() {
           {/* Header */}
           <div className="bg-navy rounded-2xl p-6 mb-5 text-white">
             <p className="text-yellow-400 text-xs uppercase tracking-widest mb-2">{cls.courses?.subject_area || 'Class'}</p>
-            <h1 className="font-display text-2xl mb-1">{cls.name}</h1>
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h1 className="font-display text-2xl">{cls.name}</h1>
+              {cls.status !== 'active' && <Badge variant={STATUS_BADGE[cls.status] || 'default'}>{STATUS_LABEL[cls.status] || cls.status}</Badge>}
+            </div>
             <p className="text-slate-300 text-sm mb-3">{cls.courses?.name}{cls.courses?.code ? ` · ${cls.courses.code}` : ''}</p>
             <div className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-300">
               <span className="flex items-center gap-1.5"><Clock size={13} className="text-yellow-400" />{schedule(cls)}</span>
@@ -110,7 +129,9 @@ export default function ClassDetail() {
             <div className="grid grid-cols-2 gap-x-4 gap-y-3">
               {[
                 ['Course', cls.courses?.name || '—'],
-                ['Teacher', leadOf(cls) || 'To be announced'],
+                ['Teacher', leadProfile
+                  ? (isAdmin ? <Link to={`/users/${leadProfile.id}`} className="text-slate-900 hover:text-yellow-700 hover:underline">{leadProfile.full_name}</Link> : leadProfile.full_name)
+                  : 'To be announced'],
                 ['Schedule', schedule(cls)],
                 ['Room', cls.room || '—'],
                 ['Semester', cls.semesters?.name || '—'],

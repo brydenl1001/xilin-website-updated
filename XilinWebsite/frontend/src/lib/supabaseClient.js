@@ -149,19 +149,6 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
-/** Get the current session (or null). */
-export async function getSession() {
-  const { data, error } = await supabase.auth.getSession()
-  if (error) throw error
-  return data.session
-}
-
-/** Subscribe to auth state changes. Returns the unsubscribe function. */
-export function onAuthStateChange(callback) {
-  const { data } = supabase.auth.onAuthStateChange((event, session) => callback(event, session))
-  return () => data.subscription.unsubscribe()
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // IDENTITY RESOLUTION
@@ -236,9 +223,10 @@ export async function familyAddMember(full_name, role) {
 }
 
 /** Family self-service: edit a member of the caller's own family. */
-export async function familyUpdateMember(profileId, { full_name, role }) {
+export async function familyUpdateMember(profileId, { full_name, role, phone, date_of_birth }) {
   const { error } = await supabase.rpc('family_update_member', {
     p_profile_id: profileId, p_full_name: full_name, p_role: role,
+    p_phone: phone ?? null, p_dob: date_of_birth || null,
   })
   if (error) throw new Error(error.message)
 }
@@ -312,36 +300,6 @@ export async function updateFamily(familyId, updates) {
 }
 
 /**
- * Admin: link an EXISTING profile (parent or student) to a family.
- * relationship must be one of: 'parent' | 'student' | 'guardian'
- * Note: a database trigger blocks admin/teacher profiles from being added.
- */
-export async function addFamilyMember(familyId, profileId, relationship, isPrimaryContact = false) {
-  const { data, error } = await supabase
-    .from('family_members')
-    .insert({
-      family_id: familyId,
-      profile_id: profileId,
-      relationship,
-      is_primary_contact: isPrimaryContact,
-    })
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
-/** Admin: remove a member from a family. */
-export async function removeFamilyMember(familyId, profileId) {
-  const { error } = await supabase
-    .from('family_members')
-    .delete()
-    .eq('family_id', familyId)
-    .eq('profile_id', profileId)
-  if (error) throw error
-}
-
-/**
  * Admin: update a family member's name and/or role. Keeps the member profile
  * and the family_members relationship in sync. role: 'parent' | 'student'.
  */
@@ -390,12 +348,12 @@ export async function listSemesters() {
   return data
 }
 
-/** Get the currently active semester (is_active = true). */
-export async function getActiveSemester() {
+/** Get the single "current" semester (is_current = true), or null. */
+export async function getCurrentSemester() {
   const { data, error } = await supabase
     .from('semesters')
     .select('*')
-    .eq('is_active', true)
+    .eq('is_current', true)
     .maybeSingle()
   if (error) throw error
   return data
@@ -540,9 +498,13 @@ export async function updateClass(classId, updates) {
   return data
 }
 
-/** Admin: delete a class. Guarded server-side — refuses if anyone is still enrolled/pending. */
-export async function deleteClass(classId) {
-  const { error } = await supabase.rpc('delete_class', { p_class_id: classId })
+/**
+ * Admin: set a class's status ('active' | 'on_hold' | 'canceled'). Canceling
+ * auto-drops every enrolled member (prorated credit) and clears pending requests.
+ * Classes are never deleted.
+ */
+export async function setClassStatus(classId, status) {
+  const { error } = await supabase.rpc('set_class_status', { p_class_id: classId, p_status: status })
   if (error) throw new Error(error.message)
 }
 
@@ -596,37 +558,6 @@ export async function getEnrollmentsForMembers(memberIds) {
   ;(data || []).forEach(e => { if (map[e.student_id] !== undefined) map[e.student_id].push(e) })
   return map
 }
-
-/** Admin/teacher: list all enrollments, optionally filtered by status. */
-export async function listEnrollments(status = null) {
-  let query = supabase
-    .from('enrollments')
-    .select('*, profiles(full_name, role)')
-
-  if (status) query = query.eq('status', status)
-
-  const { data, error } = await query.order('application_date', { ascending: false })
-  if (error) throw error
-  return data
-}
-
-/**
- * NOTE: Submitting a brand-new application creates an auth.users entry for
- * the student, so the public "Apply" action must go through a BACKEND
- * endpoint, not this client file (see submitEnrollmentApplication in the
- * backend-only block below). This function only edits an EXISTING enrollment.
- */
-export async function updateEnrollmentNotes(enrollmentId, notes) {
-  const { data, error } = await supabase
-    .from('enrollments')
-    .update({ notes })
-    .eq('id', enrollmentId)
-    .select()
-    .single()
-  if (error) throw error
-  return data
-}
-
 
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -703,6 +634,33 @@ export async function listBalanceTransactions(familyId) {
   if (error) throw error
   return data
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ABOUT PAGES (admin-editable content for the public About section)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Public: list every About sub-page (title, group, body). */
+export async function listAboutPages() {
+  const { data, error } = await supabase
+    .from('about_pages')
+    .select('*')
+    .order('sort_order', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Admin: update an About sub-page's title/body. */
+export async function updateAboutPage(id, { title, body }) {
+  const { data, error } = await supabase
+    .from('about_pages')
+    .update({ title, body, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw error
+  return data
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CALENDAR EVENTS (admin-managed, publicly visible)
