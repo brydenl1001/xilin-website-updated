@@ -582,12 +582,24 @@ export async function dropMember(enrollmentId) {
   return data
 }
 
-/** Record a payment / balance change. method: 'online' (family/admin) | 'cash' | 'adjustment' (admin). */
+/** Admin: record a payment / balance change. method: 'online' | 'cash' | 'adjustment'. (Family card payments go through Stripe via startCheckout.) */
 export async function recordPayment(familyId, amount, method, note = null) {
   const { data, error } = await supabase.rpc('record_payment', {
     p_family_id: familyId, p_amount: amount, p_method: method, p_note: note,
   })
   if (error) throw new Error(error.message)
+  return data
+}
+
+/**
+ * Family: start a Stripe Checkout payment. `amount` is the credit applied to the
+ * balance; the card processing fee is added on top at checkout. Returns
+ * { url, total, fee, credit } — redirect the browser to `url`. The ledger is
+ * credited by the `stripe-webhook` edge function once Stripe confirms payment.
+ */
+export async function startCheckout(amount) {
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { amount } })
+  if (error) throw await edgeFunctionError(error, 'Could not start the payment.')
   return data
 }
 
