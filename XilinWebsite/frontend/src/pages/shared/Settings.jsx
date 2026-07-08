@@ -1,17 +1,24 @@
 import { useState, useEffect } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { getProfile, getOwnFamily, saveOwnProfileInfo, saveOwnFamilyInfo } from '../../lib/supabaseClient'
+import { getProfile, getOwnFamily, saveOwnProfileInfo, saveOwnFamilyInfo, changePassword } from '../../lib/supabaseClient'
 import { Card, Button, Input, Textarea, PageHeader, TableSkeleton } from '../../components/ui'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 
 export default function Settings() {
   const { user, refreshUser } = useAuth()
   const isFamily = user?.role === 'family'
 
   const [form, setForm] = useState({ full_name: '', family_name: '', phone: '', date_of_birth: '', address: '', username: '' })
+  const [passwordForm, setPasswordForm] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState('')
+  const [passwordError, setPasswordError] = useState('')
+  const [passwordSaving, setPasswordSaving] = useState(false)
+  const [passwordSaved, setPasswordSaved] = useState(false)
+  const [showPasswords, setShowPasswords] = useState({ old: false, new: false, confirm: false })
+  const [expandPassword, setExpandPassword] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
@@ -36,6 +43,7 @@ export default function Settings() {
   }, [user?.id, isFamily])
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }))
+  const setPassword = (k) => (e) => setPasswordForm(f => ({ ...f, [k]: e.target.value }))
 
   const handleSave = async (e) => {
     e.preventDefault()
@@ -56,9 +64,55 @@ export default function Settings() {
     }
   }
 
+  const handlePasswordChange = async (e) => {
+    e.preventDefault()
+    setPasswordError('')
+    setPasswordSaved(false)
+
+    // Validation
+    if (!passwordForm.oldPassword || !passwordForm.newPassword || !passwordForm.confirmPassword) {
+      setPasswordError('All password fields are required')
+      return
+    }
+
+    if (passwordForm.newPassword.length < 6) {
+      setPasswordError('New password must be at least 6 characters')
+      return
+    }
+
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError('New passwords do not match')
+      return
+    }
+
+    if (passwordForm.oldPassword === passwordForm.newPassword) {
+      setPasswordError('New password must be different from current password')
+      return
+    }
+
+    setPasswordSaving(true)
+    try {
+      await changePassword(passwordForm.oldPassword, passwordForm.newPassword)
+      setPasswordSaved(true)
+      setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' })
+      setExpandPassword(false)
+      setTimeout(() => setPasswordSaved(false), 2500)
+    } catch (err) {
+      setPasswordError(err.message)
+    } finally {
+      setPasswordSaving(false)
+    }
+  }
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }))
+  }
+
   return (
     <div className="max-w-2xl animate-fade-in">
       <PageHeader title="Settings" subtitle="Manage your account and personal details" />
+      
+      {/* Profile Settings Card */}
       <Card className="mb-5">
         <h3 className="font-display text-base text-slate-900 mb-4">{isFamily ? 'Household Details' : 'Profile'}</h3>
         {loading ? (
@@ -99,6 +153,100 @@ export default function Settings() {
             {error && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{error}</p>}
 
             <Button type="submit" variant="gold" disabled={saving}>{saving ? 'Saving…' : saved ? 'Saved!' : 'Save Changes'}</Button>
+          </form>
+        )}
+      </Card>
+
+      {/* Password Change Card */}
+      <Card>
+        <div className="flex items-center justify-between mb-4 cursor-pointer" onClick={() => setExpandPassword(!expandPassword)}>
+          <div className="flex items-center gap-2">
+            <Lock className="w-4 h-4 text-slate-600" />
+            <h3 className="font-display text-base text-slate-900">Change Password</h3>
+          </div>
+          <svg className={`w-5 h-5 text-slate-400 transition-transform ${expandPassword ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+          </svg>
+        </div>
+
+        {expandPassword && (
+          <form onSubmit={handlePasswordChange} className="space-y-4 border-t border-slate-200 pt-4">
+            {/* Current Password */}
+            <div>
+              <label htmlFor="old-password" className="block text-xs font-medium text-slate-600 mb-1.5">Current Password</label>
+              <div className="relative">
+                <input
+                  id="old-password"
+                  type={showPasswords.old ? 'text' : 'password'}
+                  value={passwordForm.oldPassword}
+                  onChange={setPassword('oldPassword')}
+                  placeholder="Enter your current password"
+                  className="w-full px-3 py-2 pr-10 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() => togglePasswordVisibility('old')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPasswords.old ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* New Password */}
+            <div>
+              <label htmlFor="new-password" className="block text-xs font-medium text-slate-600 mb-1.5">New Password</label>
+              <div className="relative">
+                <input
+                  id="new-password"
+                  type={showPasswords.new ? 'text' : 'password'}
+                  value={passwordForm.newPassword}
+                  onChange={setPassword('newPassword')}
+                  placeholder="Enter a new password (minimum 6 characters)"
+                  className="w-full px-3 py-2 pr-10 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() => togglePasswordVisibility('new')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPasswords.new ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label htmlFor="confirm-password" className="block text-xs font-medium text-slate-600 mb-1.5">Confirm New Password</label>
+              <div className="relative">
+                <input
+                  id="confirm-password"
+                  type={showPasswords.confirm ? 'text' : 'password'}
+                  value={passwordForm.confirmPassword}
+                  onChange={setPassword('confirmPassword')}
+                  placeholder="Re-enter your new password"
+                  className="w-full px-3 py-2 pr-10 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-gold-500 focus:border-transparent"
+                />
+                <button
+                  type="button"
+                  onClick={() => togglePasswordVisibility('confirm')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPasswords.confirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {passwordError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{passwordError}</p>}
+
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" variant="gold" disabled={passwordSaving}>
+                {passwordSaving ? 'Updating…' : passwordSaved ? 'Password Updated!' : 'Update Password'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => { setExpandPassword(false); setPasswordForm({ oldPassword: '', newPassword: '', confirmPassword: '' }); setPasswordError('') }}>
+                Cancel
+              </Button>
+            </div>
           </form>
         )}
       </Card>

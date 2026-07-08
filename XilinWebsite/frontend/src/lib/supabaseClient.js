@@ -26,9 +26,9 @@ async function edgeFunctionError(error, fallback) {
   return new Error(message)
 }
 
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
 // CLIENT-SIDE SUPABASE FUNCTIONS
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
 // Aligned with the schema:
 //   profiles, families, family_members, semesters, courses, classes,
 //   class_teachers, enrollments, balance_transactions, enrollment_applications,
@@ -43,12 +43,12 @@ async function edgeFunctionError(error, fallback) {
 //   - Creating students, parents, families    → needs service role key
 //   - Multi-table atomic transactions          → enrollment approval +
 //     class assignment + family linking, real payment confirmation, etc.
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // PUBLIC STATS
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /**
  * Public: counts for the homepage stats section. Uses a SECURITY DEFINER RPC
@@ -119,9 +119,9 @@ export async function createAccount(payload) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // AUTH
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Sign in with email + password (staff: admin/teacher). */
 export async function signIn(email, password) {
@@ -149,10 +149,23 @@ export async function signOut() {
   return supabase.auth.signOut()
 }
 
+/**
+ * Self-service: change password for the currently signed-in user.
+ * Takes old password (for verification) and new password.
+ * Routed through the `change-password` edge function (service role).
+ */
+export async function changePassword(oldPassword, newPassword) {
+  const { data, error } = await supabase.functions.invoke('change-password', {
+    body: { oldPassword, newPassword },
+  })
+  if (error) throw await edgeFunctionError(error, 'Failed to change password')
+  return data
+}
 
-// ─────────────────────────────────────────────────────────────────────────────
+
+// ────────────────────────────────────────────────────────────────────────────────
 // IDENTITY RESOLUTION
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // Two distinct login types exist:
 //   1. profiles.id = auth.uid()  → admin, teacher, student (can_login = true)
 //   2. families.id = auth.uid()  → household login for the parent portal
@@ -262,9 +275,9 @@ export async function listProfiles(role = null) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // FAMILIES (creation is backend-only — these are read/management operations)
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Family: get own record + all members (parents + students). */
 export async function getOwnFamily(familyId) {
@@ -334,9 +347,9 @@ export async function removeFamilyMemberFully(familyId, profileId) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // SEMESTERS
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Authenticated: list all semesters. */
 export async function listSemesters() {
@@ -383,9 +396,9 @@ export async function updateSemester(semesterId, updates) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // COURSES (reusable templates, year-agnostic)
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Authenticated: list all course templates. */
 export async function listCourses() {
@@ -437,9 +450,9 @@ export async function updateCourse(courseId, updates) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // CLASSES (a running instance of a course in a semester)
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Authenticated: list classes, optionally filtered by semester. Includes teachers via join. */
 export async function listClasses(semesterId = null) {
@@ -530,9 +543,9 @@ export async function removeTeacherFromClass(classId, teacherId) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // ENROLLMENTS
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Student/family: get own enrollment records (RLS: student_id = auth.uid() OR is_family_of). */
 export async function getOwnEnrollments(studentId) {
@@ -560,9 +573,9 @@ export async function getEnrollmentsForMembers(memberIds) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // BALANCE & PAYMENTS (family balance + immutable ledger)
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /**
  * Enroll a member into a class. Atomic: capacity hard-stop, debits the class
@@ -647,9 +660,9 @@ export async function listBalanceTransactions(familyId) {
   return data
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // ABOUT PAGES (admin-editable content for the public About section)
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Public: list every About sub-page (title, group, body). */
 export async function listAboutPages() {
@@ -674,9 +687,9 @@ export async function updateAboutPage(id, { title, body }) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // CALENDAR EVENTS (admin-managed, publicly visible)
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /** Public: list all calendar events (oldest first). */
 export async function listCalendarEvents() {
@@ -709,9 +722,9 @@ export async function deleteCalendarEvent(id) {
 }
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 // ANNOUNCEMENTS
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────────
 
 /**
  * Public: list public announcements only (is_public = true). No auth required.
@@ -794,9 +807,9 @@ export async function deleteAnnouncement(announcementId) {
 }
 
 
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
 // BACKEND-ONLY OPERATIONS (do NOT implement these client-side)
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
 //
 //   createStudentAccount(email, password, profileData)
 //       → auth.admin.createUser() + profiles insert (can_login=true) +
@@ -828,4 +841,4 @@ export async function deleteAnnouncement(announcementId) {
 //       → must verify the charge with the payment gateway server-side
 //         before marking payments.status = 'paid'
 //
-// ═════════════════════════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════════════════════════════
