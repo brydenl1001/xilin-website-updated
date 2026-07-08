@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Plus, X, Pencil, Trash2, Clock, Phone, Cake, Users } from 'lucide-react'
+import { ArrowLeft, Plus, X, Pencil, Trash2, Clock, Phone, Cake, Users, User } from 'lucide-react'
 import {
   getOwnFamily, listClasses, getClassCounts, getOwnEnrollments,
   enrollMember, dropMember, requestEnrollment, familyUpdateMember, removeFamilyMemberFully,
@@ -15,6 +15,7 @@ import { ROLE_VARIANT } from '../../lib/categories'
 import { timesOverlap, inActiveSemester } from '../../lib/schedule'
 
 const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'
+const GENDER_LABEL = { female: 'Female', male: 'Male', other: 'Other', prefer_not_to_say: 'Prefer not to say' }
 
 export default function FamilyMemberDetail() {
   const { id } = useParams()
@@ -31,7 +32,7 @@ export default function FamilyMemberDetail() {
   const [picking, setPicking] = useState(false)
   const [semId, setSemId] = useState('')
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ full_name: '', role: 'student', phone: '', date_of_birth: '' })
+  const [editForm, setEditForm] = useState({ full_name: '', role: 'student', phone: '', date_of_birth: '', gender: '' })
   const [editError, setEditError] = useState('')
 
   const member = (family?.family_members || []).map(m => ({ ...m.profiles, relationship: m.relationship })).find(m => m.id === id)
@@ -68,31 +69,46 @@ export default function FamilyMemberDetail() {
   const enrolledForSem = enrolled.filter(e => e.classes?.semester_id === semId).map(e => ({ ...e.classes, __enr: e.id }))
   const pendingForSem = pending.filter(e => e.classes?.semester_id === semId)
 
-  const addClass = async (classId) => {
-    const target = enrollableClasses.find(c => c.id === classId)
-    const conflict = enrolled.map(e => e.classes).find(ec => timesOverlap(ec, target))
-    if (conflict && !(await confirm({
-      title: 'Schedule conflict',
-      message: `Heads up: this overlaps with "${conflict.name}" (${conflict.day_of_week} ${fmtTime(conflict.start_time)}). Continue anyway?`,
-      confirmLabel: 'Enroll anyway',
-    }))) return
+  // Enroll into one or more classes at once. Handles per-class schedule-conflict
+  // confirmation and the "registration closed → send request" fallback, then
+  // reports a summary.
+  const addClasses = async (classIds) => {
+    if (!classIds?.length) return
     setBusy(true)
-    try {
-      await enrollMember(id, classId)
-      await refreshAll()
-      toast.success('Enrolled.')
-    } catch (err) {
-      if (/registration has closed/i.test(err.message) && (await confirm({
-        title: 'Registration closed',
-        message: 'Registration has closed for this class. Send it as a request for an admin to approve instead?',
-        confirmLabel: 'Send request',
-      }))) {
-        try { await requestEnrollment(id, classId); await refreshAll(); toast.success('Request sent — an admin will review it.') }
-        catch (e2) { toast.error(e2.message) }
-      } else { toast.error(err.message) }
-    } finally {
-      setBusy(false)
+    const localEnrolled = enrolled.map(e => e.classes) // grows as we enroll, for intra-batch conflict checks
+    let enrolledCount = 0, requested = 0
+    const failures = []
+    for (const classId of classIds) {
+      const target = enrollableClasses.find(c => c.id === classId)
+      const conflict = localEnrolled.find(ec => timesOverlap(ec, target))
+      if (conflict && !(await confirm({
+        title: 'Schedule conflict',
+        message: `"${target?.name}" overlaps with "${conflict.name}" (${conflict.day_of_week} ${fmtTime(conflict.start_time)}). Enroll anyway?`,
+        confirmLabel: 'Enroll anyway',
+      }))) continue
+      try {
+        await enrollMember(id, classId)
+        enrolledCount++
+        if (target) localEnrolled.push(target)
+      } catch (err) {
+        if (/registration has closed/i.test(err.message) && (await confirm({
+          title: 'Registration closed',
+          message: `Registration has closed for "${target?.name}". Send it as a request for an admin to approve instead?`,
+          confirmLabel: 'Send request',
+        }))) {
+          try { await requestEnrollment(id, classId); requested++ }
+          catch (e2) { failures.push(`${target?.name || 'class'}: ${e2.message}`) }
+        } else if (!/registration has closed/i.test(err.message)) {
+          failures.push(`${target?.name || 'class'}: ${err.message}`)
+        }
+      }
     }
+    await refreshAll()
+    setBusy(false)
+    setPicking(false)
+    if (enrolledCount) toast.success(`Enrolled in ${enrolledCount} class${enrolledCount === 1 ? '' : 'es'}.`)
+    if (requested) toast.success(`${requested} request${requested === 1 ? '' : 's'} sent for admin approval.`)
+    if (failures.length) toast.error(failures.join(' · '))
   }
 
   const removeClass = async (enrollmentId, className) => {
@@ -108,7 +124,7 @@ export default function FamilyMemberDetail() {
   const openEdit = () => {
     setEditForm({
       full_name: member.full_name || '', role: member.relationship === 'parent' ? 'parent' : 'student',
-      phone: member.phone || '', date_of_birth: member.date_of_birth || '',
+      phone: member.phone || '', date_of_birth: member.date_of_birth || '', gender: member.gender || '',
     })
     setEditError(''); setEditOpen(true)
   }
@@ -149,7 +165,7 @@ export default function FamilyMemberDetail() {
   if (picking) {
     return (
       <ClassPicker memberName={member.full_name} classes={available} counts={counts} mode="enroll" busy={busy}
-        onPick={(cid) => addClass(cid)} onBack={() => setPicking(false)} />
+        onPick={addClasses} onBack={() => setPicking(false)} />
     )
   }
 
@@ -175,6 +191,7 @@ export default function FamilyMemberDetail() {
           <span className="flex items-center gap-1.5"><Users size={13} className="text-yellow-400" />{family?.family_name}</span>
           {member.phone && <span className="flex items-center gap-1.5"><Phone size={13} className="text-yellow-400" />{member.phone}</span>}
           {member.date_of_birth && <span className="flex items-center gap-1.5"><Cake size={13} className="text-yellow-400" />{fmtDate(member.date_of_birth)}</span>}
+          {member.gender && <span className="flex items-center gap-1.5"><User size={13} className="text-yellow-400" />{GENDER_LABEL[member.gender] || member.gender}</span>}
         </div>
       </div>
 
@@ -221,9 +238,18 @@ export default function FamilyMemberDetail() {
               <option value="student">Student</option>
               <option value="parent">Parent / Guardian</option>
             </Select>
-            <Input label="Date of Birth" id="md-dob" type="date" value={editForm.date_of_birth} onChange={e => setEditForm(f => ({ ...f, date_of_birth: e.target.value }))} />
+            <Select label="Gender" id="md-gender" value={editForm.gender} onChange={e => setEditForm(f => ({ ...f, gender: e.target.value }))}>
+              <option value="">Not specified</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </Select>
           </div>
-          <Input label="Phone" id="md-phone" type="tel" placeholder="e.g. 206-555-0100" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Date of Birth" id="md-dob" type="date" value={editForm.date_of_birth} onChange={e => setEditForm(f => ({ ...f, date_of_birth: e.target.value }))} />
+            <Input label="Phone" id="md-phone" type="tel" placeholder="e.g. 206-555-0100" value={editForm.phone} onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))} />
+          </div>
           {editError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">
             <Button variant="gold" size="sm" disabled={busy || !editForm.full_name.trim()} onClick={saveMember}>{busy ? 'Saving…' : 'Save Changes'}</Button>

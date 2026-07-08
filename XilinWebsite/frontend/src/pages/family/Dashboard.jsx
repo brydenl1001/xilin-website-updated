@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { BookOpen, Wallet, MessageSquare } from 'lucide-react'
+import { BookOpen, Wallet, MessageSquare, Hash } from 'lucide-react'
 import { getOwnFamily, getOwnEnrollments, listAnnouncements } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, SectionHeader, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
@@ -57,8 +57,13 @@ export default function FamilyDashboard() {
         <div className="absolute -right-10 -top-10 w-52 h-52 rounded-full bg-yellow-400/5 pointer-events-none" />
         <div>
           <p className="text-yellow-400 text-xs uppercase tracking-widest mb-1">Family Portal</p>
-          <h2 className="font-display text-2xl text-white mb-1">Family Portal</h2>
+          <h2 className="font-display text-2xl text-white mb-1">{family?.family_name || 'Family Portal'}</h2>
           <p className="text-slate-400 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          {family?.family_code && (
+            <p className="text-white/40 text-xs mt-1.5 inline-flex items-center gap-1.5">
+              <Hash size={12} className="text-yellow-400" />Family ID <span className="font-mono text-white/70">{family.family_code}</span>
+            </p>
+          )}
         </div>
         {members.length > 1 ? (
           <div className="bg-white/5 rounded-xl px-4 py-3 border border-white/10">

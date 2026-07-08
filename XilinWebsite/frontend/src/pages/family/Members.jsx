@@ -16,7 +16,7 @@ export default function FamilyMembers() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const [addForm, setAddForm] = useState({ full_name: '', role: 'student' })
+  const [addForm, setAddForm] = useState({ full_name: '', role: 'student', gender: '', date_of_birth: '', phone: '' })
   const [addError, setAddError] = useState('')
 
   const members = (family?.family_members || []).map(m => ({ ...m.profiles, relationship: m.relationship }))
@@ -42,8 +42,10 @@ export default function FamilyMembers() {
     if (!addForm.full_name.trim()) return
     setBusy(true); setAddError('')
     try {
-      await familyAddMember(addForm.full_name.trim(), addForm.role)
-      setAddOpen(false); setAddForm({ full_name: '', role: 'student' })
+      await familyAddMember(addForm.full_name.trim(), addForm.role, {
+        gender: addForm.gender, date_of_birth: addForm.date_of_birth, phone: addForm.phone,
+      })
+      setAddOpen(false); setAddForm({ full_name: '', role: 'student', gender: '', date_of_birth: '', phone: '' })
       await refreshUser(); await load()
       toast.success('Member added.')
     } catch (e) {
@@ -92,10 +94,23 @@ export default function FamilyMembers() {
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Family Member">
         <div className="space-y-4">
           <Input label="Full Name" id="m-name" value={addForm.full_name} onChange={e => setAddForm(f => ({ ...f, full_name: e.target.value }))} required />
-          <Select label="Role" id="m-role" value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
-            <option value="student">Student</option>
-            <option value="parent">Parent / Guardian</option>
-          </Select>
+          <div className="grid grid-cols-2 gap-3">
+            <Select label="Role" id="m-role" value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
+              <option value="student">Student</option>
+              <option value="parent">Parent / Guardian</option>
+            </Select>
+            <Select label="Gender" id="m-gender" value={addForm.gender} onChange={e => setAddForm(f => ({ ...f, gender: e.target.value }))}>
+              <option value="">Not specified</option>
+              <option value="female">Female</option>
+              <option value="male">Male</option>
+              <option value="other">Other</option>
+              <option value="prefer_not_to_say">Prefer not to say</option>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Date of Birth" id="m-dob" type="date" value={addForm.date_of_birth} onChange={e => setAddForm(f => ({ ...f, date_of_birth: e.target.value }))} />
+            <Input label="Phone" id="m-phone" type="tel" placeholder="e.g. 206-555-0100" value={addForm.phone} onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))} />
+          </div>
           <p className="text-xs text-slate-400">Both parents and students can be enrolled in classes. Members don't sign in separately — you manage everything from this family account.</p>
           {addError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{addError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">

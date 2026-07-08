@@ -79,7 +79,6 @@ export default function AdminUsers() {
       familyId: f.id,
       familyName: f.family_name,
       familyCode: f.family_code,
-      familyUsername: f.username,
       email: f.email,
     }))
   )
@@ -144,7 +143,7 @@ export default function AdminUsers() {
               <Tr key={u.id || i} onClick={() => u.id && navigate(`/users/${u.id}`)}>
                 <Td><p className="font-medium text-slate-900">{u.full_name}</p></Td>
                 <Td><Badge variant={ROLE_VARIANT[u.role]}>{u.role}</Badge></Td>
-                <Td className="text-slate-500 text-xs">{u.familyUsername || u.familyName || u.email}</Td>
+                <Td className="text-slate-500 text-xs">{u.familyName || u.email}</Td>
                 <Td><span className="text-xs text-yellow-600">View →</span></Td>
               </Tr>
             ))}

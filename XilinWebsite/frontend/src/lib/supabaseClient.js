@@ -129,9 +129,9 @@ export async function signIn(email, password) {
 }
 
 /**
- * Family sign-in by username OR 4-digit Family ID + password. Routed through the
- * `family-login` edge function, which resolves the identifier to the account and
- * returns a session that we apply locally.
+ * Family sign-in by family name OR 4-digit Family ID + password. Routed through
+ * the `family-login` edge function, which resolves the identifier to the account
+ * and returns a session that we apply locally.
  */
 export async function familyLogin(identifier, password) {
   const { data, error } = await supabase.functions.invoke('family-login', { body: { identifier, password } })
@@ -193,40 +193,72 @@ export async function getProfile(profileId) {
  * Self-service: a signed-in staff member updates their own personal info.
  * Routed through a SECURITY DEFINER RPC (there is no self-UPDATE RLS policy) that
  * only ever touches a safe column whitelist — role/can_login can't be changed.
+ * Address is stored as separate parts (street, city, state, postal_code, country).
  */
-export async function saveOwnProfileInfo({ full_name, phone, date_of_birth, address }) {
+export async function saveOwnProfileInfo({ full_name, phone, date_of_birth, street, city, state, postal_code, country }) {
   const { error } = await supabase.rpc('update_own_profile', {
     p_full_name: full_name ?? null,
     p_phone: phone ?? null,
     p_date_of_birth: date_of_birth || null,
-    p_address: address ?? null,
+    p_street: street ?? null,
+    p_city: city ?? null,
+    p_state: state ?? null,
+    p_postal_code: postal_code ?? null,
+    p_country: country ?? null,
   })
   if (error) throw new Error(error.message)
 }
 
-/** Self-service: a family (household login) updates its own contact info + login username. */
-export async function saveOwnFamilyInfo({ family_name, phone, address, username }) {
+/**
+ * Self-service: a family (household login) updates its own info. The family name
+ * doubles as the login username, so it must stay unique — the RPC rejects a name
+ * that's already taken. Address is stored as separate parts.
+ */
+export async function saveOwnFamilyInfo({ family_name, phone, street, city, state, postal_code, country }) {
   const { error } = await supabase.rpc('update_own_family', {
     p_family_name: family_name ?? null,
     p_phone: phone ?? null,
-    p_address: address ?? null,
-    p_username: username ?? null,
+    p_street: street ?? null,
+    p_city: city ?? null,
+    p_state: state ?? null,
+    p_postal_code: postal_code ?? null,
+    p_country: country ?? null,
   })
   if (error) throw new Error(error.message)
 }
 
+/** Self-service: change the signed-in account's password (family, teacher, or admin). */
+export async function changePassword(newPassword) {
+  const { error } = await supabase.auth.updateUser({ password: newPassword })
+  if (error) throw new Error(error.message)
+}
+
+/**
+ * Self-service: change the signed-in account's login email. Routed through the
+ * `change-email` edge function (service role) so it takes effect immediately and
+ * keeps families.email in sync for family-login resolution.
+ */
+export async function changeEmail(newEmail) {
+  const { data, error } = await supabase.functions.invoke('change-email', { body: { email: newEmail } })
+  if (error) throw await edgeFunctionError(error, 'Could not change your email.')
+  return data
+}
+
 /** Family self-service: add a member (parent/student) to the caller's own family. */
-export async function familyAddMember(full_name, role) {
-  const { data, error } = await supabase.rpc('family_add_member', { p_full_name: full_name, p_role: role })
+export async function familyAddMember(full_name, role, { gender, date_of_birth, phone } = {}) {
+  const { data, error } = await supabase.rpc('family_add_member', {
+    p_full_name: full_name, p_role: role,
+    p_gender: gender || null, p_dob: date_of_birth || null, p_phone: phone ?? null,
+  })
   if (error) throw new Error(error.message)
   return data
 }
 
 /** Family self-service: edit a member of the caller's own family. */
-export async function familyUpdateMember(profileId, { full_name, role, phone, date_of_birth }) {
+export async function familyUpdateMember(profileId, { full_name, role, phone, date_of_birth, gender }) {
   const { error } = await supabase.rpc('family_update_member', {
     p_profile_id: profileId, p_full_name: full_name, p_role: role,
-    p_phone: phone ?? null, p_dob: date_of_birth || null,
+    p_phone: phone ?? null, p_dob: date_of_birth || null, p_gender: gender || null,
   })
   if (error) throw new Error(error.message)
 }

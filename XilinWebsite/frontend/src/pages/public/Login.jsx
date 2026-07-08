@@ -18,7 +18,7 @@ export default function Login() {
     setLoading(true)
     setError('')
     try {
-      // Staff sign in with an email; families with a username or 4-digit ID.
+      // Staff sign in with an email; families with their family name or 4-digit ID.
       if (identifier.includes('@')) {
         const { error } = await signIn(identifier.trim(), password)
         if (error) throw new Error(error.message)
@@ -81,14 +81,14 @@ export default function Login() {
           <p className="text-slate-400 text-sm mb-8">Sign in to your school portal</p>
 
           <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-            <Input label="Email or Family ID" id="identifier" placeholder="you@email.com or 4-digit ID" value={identifier} onChange={e => setIdentifier(e.target.value)} required />
+            <Input label="Email, family name, or Family ID" id="identifier" placeholder="you@email.com, family name, or 4-digit ID" value={identifier} onChange={e => setIdentifier(e.target.value)} required />
             <Input label="Password" id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
             {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
             <Button type="submit" variant="gold" className="w-full" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign In'}
             </Button>
           </form>
-          <p className="text-[11px] text-slate-400 text-center mb-2">Staff sign in with email · families with their username or 4-digit Family ID.</p>
+          <p className="text-[11px] text-slate-400 text-center mb-2">Staff sign in with email · families with their family name or 4-digit Family ID.</p>
 
           <p className="text-xs text-slate-400 text-center">
             Forgot your password? Contact the school office for a reset.

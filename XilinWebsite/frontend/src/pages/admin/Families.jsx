@@ -155,30 +155,34 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   // After any balance-affecting op: refresh the families list (header balance) + local data.
   const refreshAll = async () => { await onChanged(); await reload() }
 
-  const addClass = async (memberId, classId) => {
-    if (!classId) return
-    // Schedule-conflict warning (non-blocking).
-    const target = classes.find(c => c.id === classId)
-    const conflict = (enrollByMember[memberId] || [])
-      .filter(e => e.status === 'enrolled')
-      .map(e => e.classes)
-      .find(ec => timesOverlap(ec, target))
-    if (conflict && !(await confirm({
-      title: 'Schedule conflict',
-      message: `Heads up: this overlaps with "${conflict.name}" (${conflict.day_of_week} ${fmtTime(conflict.start_time)}). Enroll anyway?`,
-      confirmLabel: 'Enroll anyway',
-    }))) return
-
+  const addClasses = async (memberId, classIds) => {
+    if (!classIds?.length) return
     setBusy(true)
-    try {
-      await enrollMember(memberId, classId)
-      await refreshAll()
-      toast.success('Enrolled.')
-    } catch (err) {
-      toast.error(err.message)
-    } finally {
-      setBusy(false)
+    const localEnrolled = (enrollByMember[memberId] || [])
+      .filter(e => e.status === 'enrolled').map(e => e.classes)
+    let enrolledCount = 0
+    const failures = []
+    for (const classId of classIds) {
+      const target = classes.find(c => c.id === classId)
+      const conflict = localEnrolled.find(ec => timesOverlap(ec, target))
+      if (conflict && !(await confirm({
+        title: 'Schedule conflict',
+        message: `"${target?.name}" overlaps with "${conflict.name}" (${conflict.day_of_week} ${fmtTime(conflict.start_time)}). Enroll anyway?`,
+        confirmLabel: 'Enroll anyway',
+      }))) continue
+      try {
+        await enrollMember(memberId, classId)
+        enrolledCount++
+        if (target) localEnrolled.push(target)
+      } catch (err) {
+        failures.push(`${target?.name || 'class'}: ${err.message}`)
+      }
     }
+    await refreshAll()
+    setBusy(false)
+    setPickingFor(null)
+    if (enrolledCount) toast.success(`Enrolled in ${enrolledCount} class${enrolledCount === 1 ? '' : 'es'}.`)
+    if (failures.length) toast.error(failures.join(' · '))
   }
 
   const approveRequest = async (enrollmentId) => {
@@ -289,7 +293,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
         counts={counts}
         mode="enroll"
         busy={busy}
-        onPick={(classId) => addClass(pickingFor.id, classId)}
+        onPick={(classIds) => addClasses(pickingFor.id, classIds)}
         onBack={() => setPickingFor(null)}
       />
     )

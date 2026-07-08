@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { ArrowLeft, Clock, MapPin, User, BookOpen, Check, CalendarDays } from 'lucide-react'
 import { Button, Card, Badge, ListToolbar } from './ui'
 import { useListControls } from '../hooks/useListControls'
@@ -14,32 +15,41 @@ const SORT_OPTIONS = [
 const leadOf = (c) => c.class_teachers?.find(ct => ct.role === 'lead')?.profiles?.full_name
 
 /**
- * Full-page class browser used when enrolling a member (family + admin).
+ * Full-page class browser used when enrolling a member (family + admin). Supports
+ * selecting several classes at once — tap cards to select, then confirm.
  *   classes  — the available classes to choose from (already filtered)
  *   counts   — map of class_id → enrolled count (for capacity / "Full")
  *   mode     — 'enroll' | 'request' (controls the action label)
- *   onPick(classId), onBack(), busy
+ *   onPick(classIds[]), onBack(), busy
  */
 export default function ClassPicker({ memberName, classes, counts = {}, mode = 'enroll', onPick, onBack, busy }) {
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result } =
     useListControls(classes, { searchKeys: ['name', 'courses.name', 'courses.subject_area', 'courses.grade_level', 'room'], sortOptions: SORT_OPTIONS })
 
+  const [selected, setSelected] = useState(() => new Set())
+  const toggle = (id) => setSelected(prev => {
+    const next = new Set(prev)
+    next.has(id) ? next.delete(id) : next.add(id)
+    return next
+  })
+
   const actionLabel = mode === 'request' ? 'Request' : 'Enroll'
   const semesterNames = [...new Set(classes.map(c => c.semesters?.name).filter(Boolean))]
+  const count = selected.size
 
   return (
-    <div className="max-w-4xl animate-fade-in">
+    <div className="max-w-4xl animate-fade-in pb-24">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-900 mb-4 cursor-pointer transition-colors">
         <ArrowLeft size={15} /> Back
       </button>
 
       <div className="mb-5">
-        <h1 className="font-display text-2xl text-slate-900">{mode === 'request' ? 'Request a class' : 'Enroll in a class'}</h1>
+        <h1 className="font-display text-2xl text-slate-900">{mode === 'request' ? 'Request classes' : 'Enroll in classes'}</h1>
         {memberName && (
           <p className="text-sm text-slate-400 mt-0.5">
             For <span className="font-medium text-slate-600">{memberName}</span>
             {semesterNames.length === 1 && <> · <span className="font-medium text-slate-600">{semesterNames[0]}</span></>}
-            {' · '}{classes.length} class{classes.length === 1 ? '' : 'es'} available
+            {' · '}{classes.length} class{classes.length === 1 ? '' : 'es'} available · select one or more
           </p>
         )}
       </div>
@@ -57,36 +67,54 @@ export default function ClassPicker({ memberName, classes, counts = {}, mode = '
             const enrolled = counts[c.id] || 0
             const full = c.max_students != null && enrolled >= c.max_students
             const lead = leadOf(c)
+            const isSelected = selected.has(c.id)
             return (
-              <Card key={c.id} className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium text-slate-900">{c.name}</p>
-                    {c.courses?.subject_area && <Badge variant="academics">{c.courses.subject_area}</Badge>}
-                    {c.courses?.grade_level && <span className="text-xs text-slate-400">{c.courses.grade_level}</span>}
+              <Card key={c.id}
+                onClick={full ? undefined : () => toggle(c.id)}
+                className={`flex items-center justify-between gap-4 ${full ? 'opacity-60' : 'cursor-pointer'} ${isSelected ? '!border-yellow-400 ring-2 ring-yellow-100' : ''}`}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className={`w-5 h-5 rounded-md flex-shrink-0 flex items-center justify-center border transition-colors ${isSelected ? 'bg-yellow-500 border-yellow-500 text-slate-900' : 'border-slate-300 text-transparent'}`}>
+                    <Check size={13} />
                   </div>
-                  <p className="text-xs text-slate-400 mt-1 flex items-center flex-wrap gap-x-3 gap-y-0.5">
-                    <span className="flex items-center gap-1"><BookOpen size={11} />{c.courses?.name || '—'}</span>
-                    {c.day_of_week && <span className="flex items-center gap-1"><Clock size={11} />{c.day_of_week} {fmtTime(c.start_time)}{c.end_time ? `–${fmtTime(c.end_time)}` : ''}</span>}
-                    {c.room && <span className="flex items-center gap-1"><MapPin size={11} />{c.room}</span>}
-                    {lead && <span className="flex items-center gap-1"><User size={11} />{lead}</span>}
-                    {c.semesters?.name && <span className="flex items-center gap-1"><CalendarDays size={11} />{c.semesters.name}</span>}
-                  </p>
-                </div>
-                <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                  <div className="text-right">
-                    {c.courses?.price != null && <p className="text-sm font-semibold text-yellow-700">{money(c.courses.price)}</p>}
-                    <p className="text-[11px] text-slate-400">
-                      {full ? <span className="text-red-500 font-medium">Full</span> : `${enrolled}${c.max_students != null ? ` / ${c.max_students}` : ''}`}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-medium text-slate-900">{c.name}</p>
+                      {c.courses?.subject_area && <Badge variant="academics">{c.courses.subject_area}</Badge>}
+                      {c.courses?.grade_level && <span className="text-xs text-slate-400">{c.courses.grade_level}</span>}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1 flex items-center flex-wrap gap-x-3 gap-y-0.5">
+                      <span className="flex items-center gap-1"><BookOpen size={11} />{c.courses?.name || '—'}</span>
+                      {c.day_of_week && <span className="flex items-center gap-1"><Clock size={11} />{c.day_of_week} {fmtTime(c.start_time)}{c.end_time ? `–${fmtTime(c.end_time)}` : ''}</span>}
+                      {c.room && <span className="flex items-center gap-1"><MapPin size={11} />{c.room}</span>}
+                      {lead && <span className="flex items-center gap-1"><User size={11} />{lead}</span>}
+                      {c.semesters?.name && <span className="flex items-center gap-1"><CalendarDays size={11} />{c.semesters.name}</span>}
                     </p>
                   </div>
-                  <Button variant="gold" size="sm" disabled={busy || full} onClick={() => onPick(c.id)}>
-                    <Check size={13} /> {actionLabel}
-                  </Button>
+                </div>
+                <div className="text-right flex-shrink-0">
+                  {c.courses?.price != null && <p className="text-sm font-semibold text-yellow-700">{money(c.courses.price)}</p>}
+                  <p className="text-[11px] text-slate-400">
+                    {full ? <span className="text-red-500 font-medium">Full</span> : `${enrolled}${c.max_students != null ? ` / ${c.max_students}` : ''}`}
+                  </p>
                 </div>
               </Card>
             )
           })}
+        </div>
+      )}
+
+      {/* Sticky action bar */}
+      {count > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 px-4 py-3">
+          <div className="max-w-4xl mx-auto flex items-center justify-between gap-3">
+            <p className="text-sm text-slate-600">{count} class{count === 1 ? '' : 'es'} selected</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setSelected(new Set())} disabled={busy}>Clear</Button>
+              <Button variant="gold" size="sm" disabled={busy} onClick={() => onPick([...selected])}>
+                <Check size={13} /> {busy ? 'Working…' : `${actionLabel} selected (${count})`}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
