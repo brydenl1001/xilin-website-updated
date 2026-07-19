@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { BookOpen, Wallet, MessageSquare, Hash } from 'lucide-react'
-import { getOwnFamily, getOwnEnrollments, listAnnouncements } from '../../lib/supabaseClient'
+import { getOwnFamily, getOwnEnrollments, getEnrollmentsForMembers, listAnnouncements } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, SectionHeader, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
@@ -14,14 +14,16 @@ export default function FamilyDashboard() {
   const [memberId, setMemberId] = useState(members[0]?.id || '')
   const [enrollments, setEnrollments] = useState([])
   const [family, setFamily] = useState(null)
+  const [allEnrollments, setAllEnrollments] = useState({})
   const [announcements, setAnnouncements] = useState([])
   const [loading, setLoading] = useState(true)
 
   const member = members.find(s => s.id === memberId)
 
-  // Family balance + announcements (independent of which member is selected)
+  // Family credit/owed + announcements (independent of which member is selected)
   useEffect(() => {
     getOwnFamily(user.id).then(setFamily).catch(() => {})
+    getEnrollmentsForMembers(members.map(m => m.id)).then(setAllEnrollments).catch(() => {})
     listAnnouncements().then(a => setAnnouncements(a.slice(0, 4))).catch(() => {})
   }, [user.id])
 
@@ -34,12 +36,15 @@ export default function FamilyDashboard() {
   }, [memberId])
 
   const myClasses = enrollments.filter(e => e.status === 'enrolled' && inActiveSemester(e))
-  const balance = Number(family?.balance || 0)
-  const owes = balance < 0
+  // Owed = unpaid enrolled classes (active classes only); credit is separate.
+  const owed = Object.values(allEnrollments).flat()
+    .filter(e => e.status === 'enrolled' && !e.paid && e.classes?.status === 'active')
+    .reduce((s, e) => s + Number(e.price_charged || 0), 0)
+  const credit = Math.max(0, Number(family?.credit || 0))
 
   const stats = [
     { label: 'Enrolled Classes', value: myClasses.length, delta: member?.full_name || '—', trend: 'up', Icon: BookOpen },
-    { label: owes ? 'Amount Due' : 'Balance', value: money(balance), delta: owes ? 'Action needed' : 'Settled', trend: owes ? 'warn' : 'up', Icon: Wallet },
+    { label: owed > 0 ? 'Amount Owed' : 'Credit Balance', value: money(owed > 0 ? owed : credit), delta: owed > 0 ? 'Unpaid classes — pay online' : 'All classes paid', trend: owed > 0 ? 'warn' : 'up', Icon: Wallet },
     { label: 'Announcements', value: announcements.length, delta: 'New updates', trend: 'up', Icon: MessageSquare },
   ]
 

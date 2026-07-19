@@ -18,8 +18,8 @@ export const ROLE_VARIANT = {
 }
 
 // Badge variant + display label for class status (Class Management, ClassDetail).
-export const CLASS_STATUS_BADGE = { active: 'success', on_hold: 'warning', canceled: 'danger' }
-export const CLASS_STATUS_LABEL = { active: 'Active', on_hold: 'On hold', canceled: 'Canceled' }
+export const CLASS_STATUS_BADGE = { active: 'success', canceled: 'warning', inactive: 'default' }
+export const CLASS_STATUS_LABEL = { active: 'Active', canceled: 'Canceled', inactive: 'Hidden' }
 
 // The fixed set of class subject areas (used in the course form dropdown).
 export const SUBJECT_AREAS = [

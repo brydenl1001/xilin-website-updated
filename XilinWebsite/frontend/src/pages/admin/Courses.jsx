@@ -5,12 +5,11 @@ import { Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, Textarea
 import { useListControls } from '../../hooks/useListControls'
 import { SUBJECT_AREAS } from '../../lib/categories'
 
-const BLANK = { code: '', name: '', subject_area: '', grade_level: '', price: '', materials_fee: '', description: '' }
+const BLANK = { code: '', name: '', subject_area: '', grade_level: '', description: '' }
 const SORT_OPTIONS = [
   { key: 'name', label: 'Name' },
   { key: 'code', label: 'Code' },
   { key: 'subject_area', label: 'Subject' },
-  { key: 'price', label: 'Price' },
 ]
 
 export default function AdminCourses() {
@@ -32,7 +31,7 @@ export default function AdminCourses() {
   const openEdit = (c) => {
     setForm({
       code: c.code || '', name: c.name || '', subject_area: c.subject_area || '',
-      grade_level: c.grade_level || '', price: c.price ?? '', materials_fee: c.materials_fee ?? '', description: c.description || '',
+      grade_level: c.grade_level || '', description: c.description || '',
     })
     setEditing(c); setSaveError('')
   }
@@ -45,8 +44,6 @@ export default function AdminCourses() {
       name: form.name.trim(),
       subject_area: form.subject_area.trim() || null,
       grade_level: form.grade_level.trim() || null,
-      price: form.price === '' ? null : Number(form.price),
-      materials_fee: form.materials_fee === '' ? null : Number(form.materials_fee),
       description: form.description.trim() || null,
     }
     try {
@@ -78,7 +75,7 @@ export default function AdminCourses() {
         ) : error ? (
           <p className="py-12 text-center text-red-500 text-sm">Failed to load: {error}</p>
         ) : (
-          <Table headers={['Code', 'Name', 'Subject', 'Grade Range', 'Price', '']}>
+          <Table headers={['Code', 'Name', 'Subject', 'Grade Range', '']}>
             {filtered.length === 0 ? (
               <Tr><Td className="py-12 text-center text-slate-400">No courses yet. Add your first one.</Td></Tr>
             ) : filtered.map(c => (
@@ -87,7 +84,6 @@ export default function AdminCourses() {
                 <Td><span className="font-medium text-slate-900">{c.name}</span></Td>
                 <Td className="text-slate-600">{c.subject_area || '—'}</Td>
                 <Td className="text-slate-600">{c.grade_level || '—'}</Td>
-                <Td className="text-slate-600">{c.price != null ? `$${Number(c.price).toLocaleString()}` : '—'}</Td>
                 <Td><Pencil size={14} className="text-slate-400" /></Td>
               </Tr>
             ))}
@@ -97,12 +93,11 @@ export default function AdminCourses() {
 
       <Modal open={!!editing} onClose={() => setEditing(null)} title={editing?.id ? 'Edit Course' : 'New Course'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3">
             <Input label="Course Code" id="code" placeholder="e.g. MAND101" value={form.code} onChange={set('code')} required />
-            <Input label="Tuition ($)" id="price" type="number" placeholder="320" value={form.price} onChange={set('price')} />
-            <Input label="Materials fee ($)" id="matfee" type="number" placeholder="0" value={form.materials_fee} onChange={set('materials_fee')} />
+            <Input label="Name" id="name" placeholder="e.g. Beginner Mandarin" value={form.name} onChange={set('name')} required />
           </div>
-          <Input label="Name" id="name" placeholder="e.g. Beginner Mandarin" value={form.name} onChange={set('name')} required />
+          <p className="text-xs text-slate-400 -mt-1">Tuition &amp; materials fees are set per class (a course can be priced differently each semester).</p>
           <div className="grid grid-cols-2 gap-3">
             <Select label="Subject Area" id="subject" value={form.subject_area} onChange={set('subject_area')}>
               <option value="">Select a subject…</option>

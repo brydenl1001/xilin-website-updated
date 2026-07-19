@@ -66,7 +66,7 @@ export default function FamilyMemberDetail() {
     const sems = distinctSemesters(enrollments.filter(e => e.status === 'enrolled' && inActiveSemester(e)).map(e => e.classes))
     setSemId(prev => (prev && sems.some(s => s.id === prev)) ? prev : (sems.find(s => s.is_current) || sems[0])?.id || '')
   }, [enrollments])
-  const enrolledForSem = enrolled.filter(e => e.classes?.semester_id === semId).map(e => ({ ...e.classes, __enr: e.id }))
+  const enrolledForSem = enrolled.filter(e => e.classes?.semester_id === semId).map(e => ({ ...e.classes, __enr: e.id, __paid: e.paid }))
   const pendingForSem = pending.filter(e => e.classes?.semester_id === semId)
 
   // Enroll into one or more classes at once. Handles per-class schedule-conflict
@@ -112,12 +112,12 @@ export default function FamilyMemberDetail() {
   }
 
   const removeClass = async (enrollmentId, className) => {
-    if (!(await confirm({ title: 'Drop class', message: `Drop "${className}"? Any prorated credit will be returned to your family balance.`, confirmLabel: 'Drop class', danger: true }))) return
+    if (!(await confirm({ title: 'Drop class', message: `Drop "${className}"? If the class was paid for, a prorated amount is returned to your credit balance.`, confirmLabel: 'Drop class', danger: true }))) return
     setBusy(true)
     try {
       const res = await dropMember(enrollmentId)
       await refreshAll()
-      toast.success(`Dropped. Credit returned: ${money(res.credit)}.`)
+      toast.success(res.credit > 0 ? `Dropped. ${money(res.credit)} returned to credit.` : 'Dropped.')
     } catch (err) { toast.error(err.message) } finally { setBusy(false) }
   }
 
@@ -211,10 +211,15 @@ export default function FamilyMemberDetail() {
           classes={enrolledForSem}
           empty="Not enrolled in any classes this term."
           renderAction={cls => (
-            <button onClick={() => removeClass(cls.__enr, cls.name)} disabled={busy}
-              className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 cursor-pointer disabled:opacity-40" title="Drop class">
-              <X size={15} />
-            </button>
+            <span className="flex items-center gap-2">
+              <span className={`text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${cls.__paid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                {cls.__paid ? 'Paid' : 'Unpaid'}
+              </span>
+              <button onClick={() => removeClass(cls.__enr, cls.name)} disabled={busy}
+                className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 cursor-pointer disabled:opacity-40" title="Drop class">
+                <X size={15} />
+              </button>
+            </span>
           )}
         />
       </Card>

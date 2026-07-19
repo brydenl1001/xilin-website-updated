@@ -6,7 +6,7 @@ import { Badge, Button, Card, Modal, PageHeader, Input, Select, TableSkeleton } 
 import { useAuth } from '../../context/AuthContext'
 import { useFeedback } from '../../context/FeedbackContext'
 import { ROLE_VARIANT } from '../../lib/categories'
-import { inActiveSemester } from '../../lib/schedule'
+import { inCurrentSemester } from '../../lib/schedule'
 
 export default function FamilyMembers() {
   const { user, refreshUser } = useAuth()
@@ -28,7 +28,7 @@ export default function FamilyMembers() {
       setFamily(fam)
       const ms = (fam.family_members || []).map(m => m.profiles).filter(Boolean)
       const entries = await Promise.all(ms.map(async m =>
-        [m.id, (await getOwnEnrollments(m.id)).filter(e => e.status === 'enrolled' && inActiveSemester(e)).length]))
+        [m.id, (await getOwnEnrollments(m.id)).filter(e => e.status === 'enrolled' && inCurrentSemester(e)).length]))
       setCounts(Object.fromEntries(entries))
     } catch (e) {
       toast.error(e.message)

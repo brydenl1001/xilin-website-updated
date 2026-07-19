@@ -44,6 +44,17 @@ export function AuthProvider({ children }) {
   const loadIdentity = async (uid) => {
     try {
       const resolved = await resolveCurrentIdentity(uid)
+      // A deactivated account may still hold a valid (un-expired) session token.
+      // Refuse it here so it's effectively signed out until the token lapses.
+      const deactivated = resolved.type === 'family'
+        ? resolved.status === 'inactive'
+        : resolved.is_active === false
+      if (deactivated) {
+        await supaSignOut()
+        setAuthEmail(null)
+        setIdentity(null)
+        return
+      }
       setIdentity(resolved)
     } catch (err) {
       console.error('Failed to resolve identity:', err)

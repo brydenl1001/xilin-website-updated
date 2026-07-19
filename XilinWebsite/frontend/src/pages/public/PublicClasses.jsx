@@ -129,8 +129,8 @@ export default function PublicClasses() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 flex-shrink-0">
-                        {cls.status === 'on_hold'
-                          ? <Badge variant="warning">On hold</Badge>
+                        {cls.status === 'canceled'
+                          ? <Badge variant="warning">Canceled</Badge>
                           : cls.max_students != null && (
                             full
                               ? <Badge variant="danger">Full</Badge>
@@ -190,7 +190,7 @@ export default function PublicClasses() {
                 ['Teacher', selected.teacher_name || 'To be announced'],
                 ['Room', selected.room || '—'],
                 ['Grade Range', selected.grade_level || 'All ages'],
-                ['Availability', selected.status === 'on_hold' ? 'On hold' : selected.max_students != null
+                ['Availability', selected.status === 'canceled' ? 'Canceled' : selected.max_students != null
                   ? (isFull(selected) ? 'Full' : `${selected.enrolled}/${selected.max_students} enrolled`)
                   : 'Open'],
                 ['Tuition', selected.price != null ? `${money(selected.price)}/term` : '—'],
@@ -206,8 +206,8 @@ export default function PublicClasses() {
               <div className="border-t border-slate-100 pt-4">
                 {members.length === 0 ? (
                   <p className="text-sm text-slate-500">Add a member in your <Link to="/members" className="text-yellow-600 hover:text-yellow-700 font-medium underline underline-offset-2">portal</Link> first, then enroll them here.</p>
-                ) : selected.status === 'on_hold' ? (
-                  <p className="text-sm text-amber-700 font-medium">This class is on hold — enrollment is paused.</p>
+                ) : selected.status === 'canceled' ? (
+                  <p className="text-sm text-amber-700 font-medium">This class has been canceled — enrollment is closed.</p>
                 ) : isFull(selected) ? (
                   <p className="text-sm text-red-600 font-medium">This class is full.</p>
                 ) : (

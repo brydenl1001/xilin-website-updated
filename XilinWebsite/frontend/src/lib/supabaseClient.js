@@ -293,6 +293,19 @@ export async function listProfiles(role = null) {
   return data
 }
 
+/**
+ * Admin: map of auth-user id → login email. Staff (admin/teacher) emails live in
+ * auth.users, not the profiles table, so the Users page needs this to display and
+ * search them. Returns {} for non-admins. Members have no auth user.
+ */
+export async function getUserEmails() {
+  const { data, error } = await supabase.rpc('get_user_emails')
+  if (error) throw error
+  const map = {}
+  ;(data || []).forEach(r => { map[r.id] = r.email })
+  return map
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FAMILIES (creation is backend-only — these are read/management operations)
@@ -332,13 +345,17 @@ export async function updateFamily(familyId, updates) {
 }
 
 /**
- * Admin: update a family member's name and/or role. Keeps the member profile
- * and the family_members relationship in sync. role: 'parent' | 'student'.
+ * Admin: update a family member's info. Keeps the member profile and the
+ * family_members relationship in sync. role: 'parent' | 'student'. Any of
+ * full_name/role/phone/date_of_birth/gender may be provided.
  */
-export async function updateFamilyMember(familyId, profileId, { full_name, role }) {
+export async function updateFamilyMember(familyId, profileId, { full_name, role, phone, date_of_birth, gender }) {
   const updates = {}
   if (full_name !== undefined) updates.full_name = full_name
   if (role !== undefined) updates.role = role
+  if (phone !== undefined) updates.phone = phone
+  if (date_of_birth !== undefined) updates.date_of_birth = date_of_birth || null
+  if (gender !== undefined) updates.gender = gender || null
   if (Object.keys(updates).length) {
     const { error } = await supabase.from('profiles').update(updates).eq('id', profileId)
     if (error) throw error
@@ -351,6 +368,32 @@ export async function updateFamilyMember(familyId, profileId, { full_name, role 
       .eq('profile_id', profileId)
     if (error) throw error
   }
+}
+
+/**
+ * Admin: update any profile's editable info (staff or member). Role and personal
+ * fields only — never can_login/is_active (use setAccountActive for the latter).
+ * Relies on the admin-full-access RLS policy on profiles.
+ */
+export async function adminUpdateProfile(profileId, updates) {
+  const allowed = ['full_name', 'role', 'phone', 'date_of_birth', 'gender', 'street', 'city', 'state', 'postal_code', 'country']
+  const clean = {}
+  for (const k of allowed) if (updates[k] !== undefined) clean[k] = updates[k] === '' ? null : updates[k]
+  const { data, error } = await supabase.from('profiles').update(clean).eq('id', profileId).select().single()
+  if (error) throw error
+  return data
+}
+
+/**
+ * Admin: activate or deactivate an account (family login, staff login, or member).
+ * Routed through the `set-account-active` edge function, which flips the flag
+ * (families.status / profiles.is_active) and bans/unbans the auth user so a
+ * deactivated login can't be used. The account is never deleted.
+ */
+export async function setAccountActive(targetId, active) {
+  const { data, error } = await supabase.functions.invoke('set-account-active', { body: { target_id: targetId, active } })
+  if (error) throw await edgeFunctionError(error, 'Could not update the account.')
+  return data
 }
 
 /**
@@ -531,9 +574,12 @@ export async function updateClass(classId, updates) {
 }
 
 /**
- * Admin: set a class's status ('active' | 'on_hold' | 'canceled'). Canceling
- * auto-drops every enrolled member (prorated credit) and clears pending requests.
- * Classes are never deleted.
+ * Admin: set a class's status:
+ *   'active'   → visible + open for enrollment
+ *   'canceled' → visible to families/public but not enrollable
+ *   'inactive' → hidden from non-admins (draft/archived)
+ * Status is a visibility flag only — it does not drop enrollees. Classes are
+ * never deleted.
  */
 export async function setClassStatus(classId, status) {
   const { error } = await supabase.rpc('set_class_status', { p_class_id: classId, p_status: status })
@@ -614,25 +660,91 @@ export async function dropMember(enrollmentId) {
   return data
 }
 
-/** Admin: record a payment / balance change. method: 'online' | 'cash' | 'adjustment'. (Family card payments go through Stripe via startCheckout.) */
-export async function recordPayment(familyId, amount, method, note = null) {
-  const { data, error } = await supabase.rpc('record_payment', {
-    p_family_id: familyId, p_amount: amount, p_method: method, p_note: note,
+/**
+ * Pay for selected unpaid classes.
+ *   Admin  → method 'cash': family credit is applied first, the remainder is
+ *            recorded as cash received. `date` optionally backdates the entry.
+ *   Family → method 'credit': only when credit covers the full total (card
+ *            payments go through startClassCheckout instead).
+ * Marks each class paid and writes per-class ledger entries.
+ */
+export async function payEnrollments(familyId, enrollmentIds, method, note = null, date = null) {
+  const { data, error } = await supabase.rpc('pay_enrollments', {
+    p_family_id: familyId, p_enrollment_ids: enrollmentIds, p_method: method, p_note: note, p_date: date,
+  })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+/** The fixed reasons an admin must choose from when manually adjusting credit. */
+export const ADJUST_REASONS = [
+  'Refunded credit', 'Error adjustment', 'Credit addition',
+  'Scholarship / discount', 'Returned check / failed payment', 'Other',
+]
+
+/**
+ * Admin: manually add/subtract family credit (e.g. correcting an error or
+ * recording an external refund). `reason` must be one of ADJUST_REASONS; a note
+ * is required when the reason is 'Other'.
+ */
+export async function adjustCredit(familyId, amount, reason, note = null, date = null) {
+  const { data, error } = await supabase.rpc('adjust_credit', {
+    p_family_id: familyId, p_amount: amount, p_reason: reason, p_note: note, p_date: date,
   })
   if (error) throw new Error(error.message)
   return data
 }
 
 /**
- * Family: start a Stripe Checkout payment. `amount` is the credit applied to the
- * balance; the card processing fee is added on top at checkout. Returns
- * { url, total, fee, credit } — redirect the browser to `url`. The ledger is
- * credited by the `stripe-webhook` edge function once Stripe confirms payment.
+ * Family: pay for selected classes by card. Credit is applied first server-side;
+ * the card is charged only the remainder (+ processing fee on that remainder).
+ * Returns { settled: true, ... } when credit covered everything (no redirect
+ * needed), or { url, total, credit_used, card_total, fee } — redirect to `url`.
+ * Classes are marked paid by the `stripe-webhook` edge function on confirmation.
  */
-export async function startCheckout(amount) {
-  const { data, error } = await supabase.functions.invoke('create-checkout-session', { body: { amount } })
+export async function startClassCheckout(enrollmentIds) {
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    body: { kind: 'pay_classes', enrollment_ids: enrollmentIds },
+  })
   if (error) throw await edgeFunctionError(error, 'Could not start the payment.')
   return data
+}
+
+/**
+ * Family: add any amount of credit to the account by card (fee added on top).
+ * Returns { url, total, fee, credit } — redirect the browser to `url`.
+ */
+export async function startCreditCheckout(amount) {
+  const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+    body: { kind: 'add_credit', amount },
+  })
+  if (error) throw await edgeFunctionError(error, 'Could not start the payment.')
+  return data
+}
+
+/**
+ * Admin: per-semester financial summary (active-class enrollments only).
+ * Returns { registered, received, due, families_owing }. Pass null for all semesters.
+ */
+export async function getSemesterFinancials(semesterId = null) {
+  const { data, error } = await supabase.rpc('get_semester_financials', { p_semester_id: semesterId })
+  if (error) throw error
+  const row = data?.[0] || {}
+  return {
+    registered: Number(row.registered || 0),
+    received: Number(row.received || 0),
+    due: Number(row.due || 0),
+    families_owing: Number(row.families_owing || 0),
+  }
+}
+
+/** Admin: derived amount owed per family (unpaid active classes). Returns map of family_id → { owed, unpaid_count }. */
+export async function getFamilyOwedMap() {
+  const { data, error } = await supabase.from('family_owed').select('*')
+  if (error) throw error
+  const map = {}
+  ;(data || []).forEach(r => { map[r.family_id] = { owed: Number(r.owed), unpaid_count: r.unpaid_count } })
+  return map
 }
 
 /** Enrolled count per class (for capacity / "full" display). Returns a Map of class_id → count. */

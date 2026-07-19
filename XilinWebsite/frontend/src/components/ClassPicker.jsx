@@ -7,7 +7,7 @@ import { money, fmtTime } from '../lib/format'
 const SORT_OPTIONS = [
   { key: 'name', label: 'Name' },
   { key: 'start_time', label: 'Time' },
-  { key: 'courses.price', label: 'Price' },
+  { key: 'price', label: 'Price' },
   { key: 'courses.subject_area', label: 'Subject' },
   { key: 'courses.grade_level', label: 'Grade' },
 ]
@@ -92,7 +92,7 @@ export default function ClassPicker({ memberName, classes, counts = {}, mode = '
                   </div>
                 </div>
                 <div className="text-right flex-shrink-0">
-                  {c.courses?.price != null && <p className="text-sm font-semibold text-yellow-700">{money(c.courses.price)}</p>}
+                  {c.price != null && <p className="text-sm font-semibold text-yellow-700">{money(c.price)}</p>}
                   <p className="text-[11px] text-slate-400">
                     {full ? <span className="text-red-500 font-medium">Full</span> : `${enrolled}${c.max_students != null ? ` / ${c.max_students}` : ''}`}
                   </p>

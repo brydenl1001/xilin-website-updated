@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Hash, Mail, KeyRound } from 'lucide-react'
+import { Hash, Mail, KeyRound, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import {
   getProfile, getOwnFamily, saveOwnProfileInfo, saveOwnFamilyInfo, changeEmail, changePassword,
@@ -29,6 +29,7 @@ export default function Settings() {
   const [emailBusy, setEmailBusy] = useState(false)
   const [pwForm, setPwForm] = useState({ next: '', confirm: '' })
   const [pwBusy, setPwBusy] = useState(false)
+  const [showPw, setShowPw] = useState(false)
 
   useEffect(() => {
     if (!user?.id) return
@@ -193,9 +194,13 @@ export default function Settings() {
       <Card>
         <h3 className="font-display text-base text-slate-900 mb-4 flex items-center gap-2"><KeyRound size={16} className="text-slate-400" /> Password</h3>
         <form onSubmit={handlePassword} className="space-y-3">
-          <Input label="New password" id="s-pw" type="password" placeholder="At least 8 characters" value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))} />
-          <Input label="Confirm new password" id="s-pw2" type="password" value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} />
-          <Button type="submit" variant="outline" size="sm" disabled={pwBusy || !pwForm.next || !pwForm.confirm}>{pwBusy ? 'Saving…' : 'Change Password'}</Button>
+          <Input label="New password" id="s-pw" type={showPw ? 'text' : 'password'} placeholder="At least 8 characters" value={pwForm.next} onChange={e => setPwForm(f => ({ ...f, next: e.target.value }))} />
+          <Input label="Confirm new password" id="s-pw2" type={showPw ? 'text' : 'password'} value={pwForm.confirm} onChange={e => setPwForm(f => ({ ...f, confirm: e.target.value }))} />
+          <button type="button" onClick={() => setShowPw(v => !v)}
+            className="inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-slate-800 cursor-pointer transition-colors">
+            {showPw ? <EyeOff size={13} /> : <Eye size={13} />}{showPw ? 'Hide password' : 'Show password'}
+          </button>
+          <div><Button type="submit" variant="outline" size="sm" disabled={pwBusy || !pwForm.next || !pwForm.confirm}>{pwBusy ? 'Saving…' : 'Change Password'}</Button></div>
         </form>
       </Card>
     </div>

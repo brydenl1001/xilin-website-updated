@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Download, AlertCircle } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { listAllTransactions, listFamilies, listClasses, getClassRoster } from '../../lib/supabaseClient'
+import { listFamilies, listClasses, getClassRoster, getFamilyOwedMap, getSemesterFinancials, listSemesters } from '../../lib/supabaseClient'
 import { Button, Card, PageHeader, Table, Tr, Td, Select, TableSkeleton } from '../../components/ui'
 import { money } from '../../lib/format'
 import { useFeedback } from '../../context/FeedbackContext'
@@ -19,9 +19,9 @@ function downloadCSV(filename, rows) {
 export default function AdminReports() {
   const navigate = useNavigate()
   const { toast } = useFeedback()
-  const [txns, setTxns] = useState([])
   const [families, setFamilies] = useState([])
   const [classes, setClasses] = useState([])
+  const [semesters, setSemesters] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [rosterClassId, setRosterClassId] = useState('')
@@ -29,22 +29,40 @@ export default function AdminReports() {
   const [roster, setRoster] = useState([])
   const [rosterLoading, setRosterLoading] = useState(false)
 
+  // Financial summary — scoped to a selected semester ('all' = every semester).
+  const [finSem, setFinSem] = useState('current')
+  const [fin, setFin] = useState({ registered: 0, received: 0, due: 0, families_owing: 0 })
+  const [finLoading, setFinLoading] = useState(true)
+
+  const [owedMap, setOwedMap] = useState({})
   useEffect(() => {
-    Promise.all([listAllTransactions(), listFamilies(), listClasses()])
-      .then(([t, f, c]) => { setTxns(t); setFamilies(f); setClasses(c) })
+    Promise.all([listFamilies(), listClasses(), getFamilyOwedMap(), listSemesters()])
+      .then(([f, c, o, s]) => {
+        setFamilies(f); setClasses(c); setOwedMap(o); setSemesters(s)
+        // Default the financial summary to the current semester if there is one.
+        const current = s.find(x => x.is_current)
+        if (current) setFinSem(current.id)
+        else setFinSem('all')
+      })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))
   }, [])
 
-  const sumBy = (m) => txns.filter(t => t.method === m).reduce((s, t) => s + Number(t.amount), 0)
-  const received = sumBy('cash') + sumBy('online')
-  const charged = Math.abs(sumBy('enrollment'))
-  const credited = sumBy('drop_credit')
-  const adjustments = sumBy('adjustment')
+  // Reload the financial summary whenever the selected semester changes.
+  useEffect(() => {
+    if (finSem === 'current') return // still resolving the default
+    setFinLoading(true)
+    getSemesterFinancials(finSem === 'all' ? null : finSem)
+      .then(setFin)
+      .catch(e => toast.error(e.message))
+      .finally(() => setFinLoading(false))
+  }, [finSem])
 
-  const owing = families.filter(f => Number(f.balance) < 0)
-    .sort((a, b) => Number(a.balance) - Number(b.balance))
-  const totalOwed = owing.reduce((s, f) => s + Math.abs(Number(f.balance)), 0)
+  const owing = families
+    .map(f => ({ ...f, owed: owedMap[f.id]?.owed || 0 }))
+    .filter(f => f.owed > 0)
+    .sort((a, b) => b.owed - a.owed)
+  const totalOwed = owing.reduce((s, f) => s + f.owed, 0)
 
   const loadRoster = async (classId) => {
     setRosterClassId(classId); setRoster([])
@@ -57,13 +75,13 @@ export default function AdminReports() {
 
   const exportOwing = () => downloadCSV('outstanding-balances.csv', [
     ['Family', 'Family ID', 'Email', 'Phone', 'Amount Owed'],
-    ...owing.map(f => [f.family_name, f.family_code, f.email, f.phone, Math.abs(Number(f.balance)).toFixed(2)]),
+    ...owing.map(f => [f.family_name, f.family_code, f.email, f.phone, f.owed.toFixed(2)]),
   ])
   const exportRoster = () => {
     const cls = classes.find(c => c.id === rosterClassId)
     downloadCSV(`roster-${cls?.name || 'class'}.csv`, [
-      ['Member', 'Role', 'Family', 'Email', 'Phone'],
-      ...roster.map(r => [r.member_name, r.member_role, r.family_name, r.email, r.phone]),
+      ['Member', 'Role', 'Family', 'Email', 'Phone', 'Payment'],
+      ...roster.map(r => [r.member_name, r.member_role, r.family_name, r.email, r.phone, r.paid ? 'Paid' : 'Unpaid']),
     ])
   }
 
@@ -80,12 +98,30 @@ export default function AdminReports() {
       <PageHeader title="Reports" subtitle="Financial summary, outstanding balances, and class rosters" />
 
       {/* Financial summary */}
-      <h3 className="font-display text-lg text-slate-900 mb-3">Financial Summary</h3>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card><p className="text-xs text-slate-400 mb-1">Payments Received</p><p className="font-display text-2xl text-green-600">{money(received)}</p></Card>
-        <Card><p className="text-xs text-slate-400 mb-1">Enrollment Charges</p><p className="font-display text-2xl text-slate-900">{money(charged)}</p></Card>
-        <Card><p className="text-xs text-slate-400 mb-1">Drop Credits</p><p className="font-display text-2xl text-amber-600">{money(credited)}</p></Card>
-        <Card><p className="text-xs text-slate-400 mb-1">Adjustments</p><p className="font-display text-2xl text-slate-900">{money(adjustments)}</p></Card>
+      <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+        <h3 className="font-display text-lg text-slate-900">Financial Summary</h3>
+        <Select id="finsem" value={finSem} onChange={e => setFinSem(e.target.value)} className="w-56">
+          <option value="all">All semesters</option>
+          {semesters.map(s => <option key={s.id} value={s.id}>{s.name}{s.is_current ? ' (current)' : ''}</option>)}
+        </Select>
+      </div>
+      <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mb-8 transition-opacity ${finLoading ? 'opacity-50' : ''}`}>
+        <Card>
+          <p className="text-xs text-slate-400 mb-1">Families with Unpaid Debt</p>
+          <p className="font-display text-2xl text-slate-900">{fin.families_owing}</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-slate-400 mb-1">Classes Registered</p>
+          <p className="font-display text-2xl text-slate-900">{money(fin.registered)}</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-slate-400 mb-1">Total Received</p>
+          <p className="font-display text-2xl text-green-600">{money(fin.received)}</p>
+        </Card>
+        <Card>
+          <p className="text-xs text-slate-400 mb-1">Still Due</p>
+          <p className={`font-display text-2xl ${fin.due > 0 ? 'text-red-600' : 'text-slate-900'}`}>{money(fin.due)}</p>
+        </Card>
       </div>
 
       {/* Outstanding balances */}
@@ -106,7 +142,7 @@ export default function AdminReports() {
                 <Td><span className="font-medium text-slate-900">{f.family_name}</span></Td>
                 <Td className="font-mono text-xs text-slate-500">{f.family_code}</Td>
                 <Td className="text-slate-500 text-xs">{f.email}{f.phone ? ` · ${f.phone}` : ''}</Td>
-                <Td><span className="font-semibold text-red-600">{money(Math.abs(Number(f.balance)))}</span></Td>
+                <Td><span className="font-semibold text-red-600">{money(f.owed)}</span></Td>
               </Tr>
             ))}
           </Table>
@@ -135,13 +171,18 @@ export default function AdminReports() {
           ) : roster.length === 0 ? (
             <p className="py-8 text-center text-slate-400 text-sm flex items-center justify-center gap-2"><AlertCircle size={14} /> No one enrolled.</p>
           ) : (
-            <Table headers={['Member', 'Role', 'Family', 'Guardian Contact']}>
+            <Table headers={['Member', 'Role', 'Family', 'Guardian Contact', 'Payment']}>
               {roster.map(r => (
                 <Tr key={r.member_id} onClick={() => navigate(`/users/${r.member_id}`)}>
                   <Td><span className="font-medium text-slate-900">{r.member_name}</span></Td>
                   <Td className="capitalize text-slate-600">{r.member_role}</Td>
                   <Td className="text-slate-600">{r.family_name || '—'}</Td>
                   <Td className="text-slate-500 text-xs">{[r.email, r.phone].filter(Boolean).join(' · ') || '—'}</Td>
+                  <Td>
+                    <span className={`text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${r.paid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {r.paid ? 'Paid' : 'Unpaid'}
+                    </span>
+                  </Td>
                 </Tr>
               ))}
             </Table>

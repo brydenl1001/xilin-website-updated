@@ -54,11 +54,11 @@ export default function ClassDetail() {
 
   const changeStatus = async (newStatus) => {
     if (!cls || newStatus === cls.status) return
-    if (newStatus === 'canceled' && !(await confirm({
-      title: 'Cancel class',
-      message: `Cancel "${cls.name}"? Everyone still enrolled will be dropped and given prorated credit.`,
-      confirmLabel: 'Cancel class', danger: true,
-    }))) return
+    const CONFIRM = {
+      canceled: { title: 'Cancel class', message: `Mark "${cls.name}" as canceled? Families and the public will still see it but can no longer enroll. Enrolled members stay enrolled — drop them individually if refunds are needed.`, confirmLabel: 'Cancel class' },
+      inactive: { title: 'Hide class', message: `Hide "${cls.name}"? It will disappear from families and the public catalog. Admins can still see and re-activate it.`, confirmLabel: 'Hide class' },
+    }
+    if (CONFIRM[newStatus] && !(await confirm({ ...CONFIRM[newStatus], danger: true }))) return
     setStatusBusy(true)
     try {
       await setClassStatus(id, newStatus)
@@ -89,8 +89,8 @@ export default function ClassDetail() {
               title="Class status"
               className="text-xs border border-slate-200 rounded-lg px-2 h-8 bg-white outline-none text-slate-700 cursor-pointer disabled:opacity-50">
               <option value="active">Active</option>
-              <option value="on_hold">On hold</option>
-              <option value="canceled">Canceled</option>
+              <option value="canceled">Canceled (visible, not enrollable)</option>
+              <option value="inactive">Hidden (admins only)</option>
             </select>
             <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil size={13} /> Edit</Button>
           </div>
@@ -136,8 +136,8 @@ export default function ClassDetail() {
                 ['Room', cls.room || '—'],
                 ['Semester', cls.semesters?.name || '—'],
                 ['Grade Range', cls.courses?.grade_level || 'All ages'],
-                ['Tuition', cls.courses?.price != null ? `${money(cls.courses.price)}/term` : '—'],
-                ['Materials Fee', cls.courses?.materials_fee != null ? money(cls.courses.materials_fee) : 'None'],
+                ['Tuition', cls.price != null ? `${money(cls.price)}/term` : '—'],
+                ['Materials Fee', cls.materials_fee != null ? money(cls.materials_fee) : 'None'],
               ].map(([k, v]) => (
                 <div key={k}>
                   <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-0.5">{k}</p>
@@ -169,9 +169,14 @@ export default function ClassDetail() {
                             <p className="text-[11px] text-slate-400 capitalize">{r.member_role}{r.family_name ? ` · ${r.family_name}` : ''}</p>
                           </div>
                         </div>
-                        <div className="text-right text-[11px] text-slate-500 flex-shrink-0">
-                          {r.email && <p className="truncate max-w-[180px]">{r.email}</p>}
-                          {r.phone && <p>{r.phone}</p>}
+                        <div className="flex items-center gap-3 flex-shrink-0">
+                          <div className="text-right text-[11px] text-slate-500">
+                            {r.email && <p className="truncate max-w-[180px]">{r.email}</p>}
+                            {r.phone && <p>{r.phone}</p>}
+                          </div>
+                          <span className={`text-[10px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${r.paid ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                            {r.paid ? 'Paid' : 'Unpaid'}
+                          </span>
                         </div>
                       </RowTag>
                     )

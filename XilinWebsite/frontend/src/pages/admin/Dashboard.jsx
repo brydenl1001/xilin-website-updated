@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Users, UserCheck, Wallet, GraduationCap } from 'lucide-react'
-import { listProfiles, listEnrollmentApplications, listFamilies, listAnnouncements, listClasses } from '../../lib/supabaseClient'
+import { listProfiles, listEnrollmentApplications, listFamilies, listAnnouncements, listClasses, getFamilyOwedMap } from '../../lib/supabaseClient'
 import { StatCard, Card, Badge, Button, SectionHeader, Skeleton, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { CAT_DOT } from '../../lib/categories'
@@ -18,16 +18,17 @@ export default function AdminDashboard() {
   useEffect(() => {
     const load = async () => {
       try {
-        const [students, applications, fams, annData, classes] = await Promise.all([
+        const [students, applications, fams, annData, classes, owedMap] = await Promise.all([
           listProfiles('student'),
           listEnrollmentApplications('pending'),
           listFamilies(),
           listAnnouncements(),
           listClasses(),
+          getFamilyOwedMap(),
         ])
         setStudentCount(students.length)
         setPending(applications.length)
-        setFamilies(fams)
+        setFamilies(fams.map(f => ({ ...f, owed: owedMap[f.id]?.owed || 0 })))
         setAnnouncements(annData.slice(0, 4))
         setClassCount(classes.length)
       } catch (err) {
@@ -39,7 +40,7 @@ export default function AdminDashboard() {
     load()
   }, [])
 
-  const owing = families.filter(f => Number(f.balance) < 0).sort((a, b) => Number(a.balance) - Number(b.balance))
+  const owing = families.filter(f => f.owed > 0).sort((a, b) => b.owed - a.owed)
 
   const stats = [
     { label: 'Total Students', value: studentCount.toLocaleString(), delta: 'Member accounts', trend: 'up', Icon: Users },
@@ -106,7 +107,7 @@ export default function AdminDashboard() {
                 <p className="text-[13px] font-medium text-slate-900">{f.family_name}</p>
                 <p className="text-[11px] text-slate-400">ID {f.family_code}</p>
               </div>
-              <span className="text-sm font-semibold text-red-600">{money(f.balance)}</span>
+              <span className="text-sm font-semibold text-red-600">{money(f.owed)}</span>
             </Link>
           ))}
         </Card>

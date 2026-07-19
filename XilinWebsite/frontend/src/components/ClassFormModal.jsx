@@ -5,7 +5,7 @@ import { fmtTime } from '../lib/format'
 
 const CLASS_DAY = 'Sunday' // classes are held on Sundays
 const leadOf = (cls) => cls?.class_teachers?.find(ct => ct.role === 'lead')?.profiles || null
-const BLANK = { course_id: '', semester_id: '', name: '', room: '', start_time: '', end_time: '', max_students: '', lead_teacher_id: '' }
+const BLANK = { course_id: '', semester_id: '', name: '', room: '', start_time: '', end_time: '', max_students: '', price: '', materials_fee: '', lead_teacher_id: '' }
 
 /**
  * Shared create/edit form for a class. `editing` is the class object (edit) or
@@ -22,7 +22,8 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
       setForm({
         course_id: editing.course_id || '', semester_id: editing.semester_id || '', name: editing.name || '',
         room: editing.room || '', start_time: fmtTime(editing.start_time), end_time: fmtTime(editing.end_time),
-        max_students: editing.max_students ?? '', lead_teacher_id: leadOf(editing)?.id || '',
+        max_students: editing.max_students ?? '', price: editing.price ?? '', materials_fee: editing.materials_fee ?? '',
+        lead_teacher_id: leadOf(editing)?.id || '',
       })
     } else {
       const defaultSem = semesters.find(s => s.is_current) || semesters.find(s => s.is_active)
@@ -44,6 +45,8 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
       start_time: form.start_time || null,
       end_time: form.end_time || null,
       max_students: form.max_students === '' ? null : Number(form.max_students),
+      price: form.price === '' ? null : Number(form.price),
+      materials_fee: form.materials_fee === '' ? null : Number(form.materials_fee),
     }
     try {
       const saved = editing?.id ? await updateClass(editing.id, payload) : await createClass(payload)
@@ -87,6 +90,10 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
         <div className="grid grid-cols-2 gap-3">
           <Input label="Room" id="room" placeholder="e.g. Room 3" value={form.room} onChange={set('room')} />
           <Input label="Max Students" id="max" type="number" placeholder="e.g. 30" value={form.max_students} onChange={set('max_students')} />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Tuition ($)" id="price" type="number" placeholder="e.g. 320" value={form.price} onChange={set('price')} />
+          <Input label="Materials Fee ($)" id="matfee" type="number" placeholder="e.g. 0" value={form.materials_fee} onChange={set('materials_fee')} />
         </div>
         <Select label="Lead Teacher" id="lead" value={form.lead_teacher_id} onChange={set('lead_teacher_id')}>
           <option value="">Unassigned</option>
