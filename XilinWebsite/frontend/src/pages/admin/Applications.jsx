@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Eye, Check, X, ShieldCheck, KeyRound, Users, UserPlus } from 'lucide-react'
-import { listEnrollmentApplications, reviewEnrollmentApplication, listPublicCourses } from '../../lib/supabaseClient'
+import { listEnrollmentApplications, reviewEnrollmentApplication, listPublicClasses } from '../../lib/supabaseClient'
 import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 
@@ -14,7 +14,7 @@ const SORT_OPTIONS = [
 
 export default function AdminApplications() {
   const [apps, setApps] = useState([])
-  const [courses, setCourses] = useState([])
+  const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('pending')
@@ -32,10 +32,10 @@ export default function AdminApplications() {
 
   useEffect(() => {
     load()
-    listPublicCourses().then(setCourses).catch(() => {})
+    listPublicClasses().then(setClasses).catch(() => {})
   }, [])
 
-  const courseName = (id) => courses.find(c => c.id === id)?.name || 'Unknown class'
+  const className = (id) => classes.find(c => c.id === id)?.name || 'Unknown class'
 
   const statusFiltered = filter === 'all' ? apps : apps.filter(a => a.status === filter)
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
@@ -156,10 +156,10 @@ export default function AdminApplications() {
             {/* Requested classes */}
             <div>
               <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-2">Requested Classes</p>
-              {selected.desired_course_ids?.length ? (
+              {selected.desired_class_ids?.length ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {selected.desired_course_ids.map(id => (
-                    <span key={id} className="text-xs px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">{courseName(id)}</span>
+                  {selected.desired_class_ids.map(id => (
+                    <span key={id} className="text-xs px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">{className(id)}</span>
                   ))}
                 </div>
               ) : <p className="text-sm text-slate-400">None selected</p>}
@@ -181,6 +181,11 @@ export default function AdminApplications() {
             {result?.status === 'approved' && (
               <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 space-y-1.5">
                 <p className="flex items-center gap-2 font-medium"><Check size={14} /> Approved — {result.enrolled} class{result.enrolled !== 1 ? 'es' : ''} enrolled.</p>
+                {result.enroll_failures?.length > 0 && (
+                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
+                    {result.enroll_failures.length} requested class{result.enroll_failures.length !== 1 ? 'es' : ''} could not be enrolled: {result.enroll_failures.join('; ')}
+                  </p>
+                )}
                 {result.family_code && (
                   <p className="flex items-center gap-2 text-xs">
                     Family ID (sign-in): <span className="font-mono font-semibold bg-white px-1.5 py-0.5 rounded border border-green-200">{result.family_code}</span>

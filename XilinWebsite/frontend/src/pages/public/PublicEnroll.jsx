@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle, ArrowRight, Users, UserPlus, ShieldCheck, CalendarDays } from 'lucide-react'
+import { CheckCircle, ArrowRight, Users, UserPlus, ShieldCheck, CalendarDays, Clock, MapPin, User } from 'lucide-react'
 import { Button, Input, Textarea } from '../../components/ui'
-import { listPublicCourses, submitEnrollmentApplication, getCurrentSemester } from '../../lib/supabaseClient'
+import { listPublicClasses, submitEnrollmentApplication, getCurrentSemester } from '../../lib/supabaseClient'
+import { fmtTime } from '../../lib/format'
+
+const money = (n) => `$${Number(n || 0).toLocaleString()}`
+const schedule = (c) => c.day_of_week
+  ? `${c.day_of_week}${c.start_time ? ` · ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}` : ''}`
+  : 'Sundays'
 
 const STEPS = ['Your Details', 'Family', 'Classes', 'Review & Submit']
 
@@ -37,8 +43,8 @@ export default function PublicEnroll() {
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState('')
 
-  const [courses, setCourses] = useState([])
-  const [coursesError, setCoursesError] = useState('')
+  const [classes, setClasses] = useState([])
+  const [classesError, setClassesError] = useState('')
   const [semester, setSemester] = useState(null)
 
   const [form, setForm] = useState({
@@ -59,9 +65,9 @@ export default function PublicEnroll() {
   }
 
   useEffect(() => {
-    listPublicCourses()
-      .then(setCourses)
-      .catch(err => setCoursesError(err.message))
+    listPublicClasses()
+      .then(rows => setClasses((rows || []).filter(c => c.status === 'active')))
+      .catch(err => setClassesError(err.message))
     getCurrentSemester().then(setSemester).catch(() => {})
   }, [])
 
@@ -133,7 +139,7 @@ export default function PublicEnroll() {
     setStep(s => s + 1)
   }
 
-  const selectedCourses = courses.filter(c => form.class_ids.includes(c.id))
+  const selectedClasses = classes.filter(c => form.class_ids.includes(c.id))
 
   if (submitted) {
     return (
@@ -281,20 +287,22 @@ export default function PublicEnroll() {
             <h3 className="font-display text-lg text-slate-900 mb-1">Choose Classes{semester ? ` · ${semester.name}` : ''}</h3>
             <p className="text-sm text-slate-500 mb-4">Select the classes you'd like to enroll in{semester ? ` for ${semester.name}` : ''}. You can change these later with the school office.</p>
 
-            {coursesError && <p className="text-sm text-red-500">Failed to load catalog: {coursesError}</p>}
-            {!coursesError && courses.length === 0 && (
+            {classesError && <p className="text-sm text-red-500">Failed to load catalog: {classesError}</p>}
+            {!classesError && classes.length === 0 && (
               <p className="text-sm text-slate-400 py-6 text-center">No classes are open for enrollment right now. You can still submit your application and pick classes later.</p>
             )}
 
             <div className="space-y-2 max-h-80 overflow-y-auto scrollbar-thin pr-1">
-              {courses.map(course => {
-                const checked = form.class_ids.includes(course.id)
+              {classes.map(cls => {
+                const checked = form.class_ids.includes(cls.id)
+                const full = cls.max_students != null && Number(cls.enrolled) >= cls.max_students
                 return (
                   <button
-                    key={course.id}
+                    key={cls.id}
                     type="button"
-                    onClick={() => toggleClass(course.id)}
-                    className={`w-full text-left rounded-xl px-4 py-3 border transition-all flex items-start gap-3 cursor-pointer ${
+                    disabled={full}
+                    onClick={() => toggleClass(cls.id)}
+                    className={`w-full text-left rounded-xl px-4 py-3 border transition-all flex items-start gap-3 ${full ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'} ${
                       checked ? 'border-yellow-500 bg-yellow-50' : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
@@ -303,10 +311,19 @@ export default function PublicEnroll() {
                     }`}>
                       {checked && <CheckCircle size={12} />}
                     </span>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium text-slate-900">{course.name}</span>
-                      {course.subject_area && <span className="block text-xs text-slate-400">{course.subject_area}</span>}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-medium text-slate-900">{cls.name}</span>
+                        {cls.subject_area && <span className="text-xs text-slate-400">{cls.subject_area}</span>}
+                        {full && <span className="text-[11px] font-medium text-red-500">Full</span>}
+                      </span>
+                      <span className="mt-0.5 flex items-center flex-wrap gap-x-2.5 gap-y-0.5 text-xs text-slate-400">
+                        <span className="flex items-center gap-1"><Clock size={11} />{schedule(cls)}</span>
+                        {cls.room && <span className="flex items-center gap-1"><MapPin size={11} />{cls.room}</span>}
+                        {cls.teacher_name && <span className="flex items-center gap-1"><User size={11} />{cls.teacher_name}</span>}
+                      </span>
                     </span>
+                    {cls.price != null && <span className="text-sm font-semibold text-yellow-700 flex-shrink-0">{money(cls.price)}</span>}
                   </button>
                 )
               })}
@@ -330,7 +347,7 @@ export default function PublicEnroll() {
                 ...(form.applicant_type === 'student' ? [['Date of Birth', form.dob || 'Not provided']] : []),
                 ['Family', form.family_mode === 'existing' ? `Join existing (ID: ${form.family_id})` : `New family — ${form.family_name}`],
                 ...(semester ? [['Term', `${semester.name}${semester.academic_year ? ` · ${semester.academic_year}` : ''}`]] : []),
-                ['Classes', selectedCourses.length ? selectedCourses.map(c => c.name).join(', ') : 'None selected yet'],
+                ['Classes', selectedClasses.length ? selectedClasses.map(c => c.name).join(', ') : 'None selected yet'],
               ].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-4 py-2 border-b border-slate-200 last:border-0">
                   <span className="text-xs text-slate-400 flex-shrink-0">{k}</span>
