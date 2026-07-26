@@ -30,6 +30,9 @@ import AdminFamilies    from '../pages/admin/Families'
 import AdminUsers       from '../pages/admin/Users'
 import AdminCalendar    from '../pages/admin/Calendar'
 import AdminAboutPages  from '../pages/admin/AboutPages'
+import AdminSendEmail   from '../pages/admin/SendEmail'
+import AdminMaterials   from '../pages/admin/Materials'
+import AdminMaterialsPurchase from '../pages/admin/MaterialsPurchase'
 
 // Teacher pages
 import TeacherDashboard  from '../pages/teacher/Dashboard'
@@ -40,6 +43,7 @@ import FamilyDashboard       from '../pages/family/Dashboard'
 import FamilyPayments        from '../pages/family/Payments'
 import FamilyMembers         from '../pages/family/Members'
 import FamilyMemberDetail    from '../pages/family/MemberDetail'
+import FamilyMaterials       from '../pages/family/Materials'
 
 // ─── Guards ──────────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
@@ -84,12 +88,15 @@ function PortalRoutes() {
           <Route path="/applications" element={<AdminApplications />} />
           <Route path="/courses"        element={<AdminCourses />} />
           <Route path="/manage-classes" element={<AdminClasses />} />
+          <Route path="/materials"      element={<AdminMaterials />} />
+          <Route path="/materials-purchase" element={<AdminMaterialsPurchase />} />
           <Route path="/semesters"    element={<AdminSemesters />} />
           <Route path="/reports"      element={<AdminReports />} />
           <Route path="/families"     element={<AdminFamilies />} />
           <Route path="/families/:id" element={<AdminFamilies />} />
           <Route path="/users"       element={<AdminUsers />} />
           <Route path="/users/:id"   element={<AdminUsers />} />
+          <Route path="/send-email"  element={<AdminSendEmail />} />
           <Route path="/about-pages" element={<AdminAboutPages />} />
         </>}
 
@@ -104,6 +111,7 @@ function PortalRoutes() {
           <Route path="/members"           element={<FamilyMembers />} />
           <Route path="/members/:id"       element={<FamilyMemberDetail />} />
           <Route path="/child-timetable"   element={<Timetable subtitle="Weekly class schedule" />} />
+          <Route path="/materials"         element={<FamilyMaterials />} />
           <Route path="/payments"          element={<FamilyPayments />} />
         </>}
 

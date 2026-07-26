@@ -21,6 +21,7 @@ import { useFeedback } from '../../context/FeedbackContext'
 const METHOD_LABEL = {
   class_payment: 'Class payment', online: 'Card payment', cash: 'Cash payment',
   drop_credit: 'Drop credit', class_credit: 'Refund to credit', adjustment: 'Adjustment',
+  material_purchase: 'Material purchase',
 }
 const SORT_OPTIONS = [
   { key: 'family_name', label: 'Family name' },

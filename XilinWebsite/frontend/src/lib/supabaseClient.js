@@ -293,19 +293,6 @@ export async function listProfiles(role = null) {
   return data
 }
 
-/**
- * Admin: map of auth-user id → login email. Staff (admin/teacher) emails live in
- * auth.users, not the profiles table, so the Users page needs this to display and
- * search them. Returns {} for non-admins. Members have no auth user.
- */
-export async function getUserEmails() {
-  const { data, error } = await supabase.rpc('get_user_emails')
-  if (error) throw error
-  const map = {}
-  ;(data || []).forEach(r => { map[r.id] = r.email })
-  return map
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FAMILIES (creation is backend-only — these are read/management operations)
@@ -609,6 +596,84 @@ export async function removeTeacherFromClass(classId, teacherId) {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
+// MATERIALS (catalog items classes require; sold in person at the front office)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** List catalog materials. Pass false to include archived (inactive) ones. */
+export async function listMaterials(activeOnly = true) {
+  let query = supabase.from('materials').select('*')
+  if (activeOnly) query = query.eq('is_active', true)
+  const { data, error } = await query.order('name', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Admin: create a catalog material (name required; price defaults to 0). */
+export async function createMaterial(material) {
+  const { data, error } = await supabase.from('materials').insert(material).select().single()
+  if (error) throw error
+  return data
+}
+
+/** Admin: update a catalog material. Set is_active:false to archive it. */
+export async function updateMaterial(materialId, updates) {
+  const { data, error } = await supabase.from('materials').update(updates).eq('id', materialId).select().single()
+  if (error) throw error
+  return data
+}
+
+/** Materials linked to a class, with the catalog row and required/recommended flag. */
+export async function listClassMaterials(classId) {
+  const { data, error } = await supabase
+    .from('class_materials')
+    .select('material_id, is_required, materials(*)')
+    .eq('class_id', classId)
+  if (error) throw error
+  return data
+}
+
+/**
+ * Admin: replace a class's material links in one go.
+ * `links` is [{ material_id, is_required }].
+ */
+export async function setClassMaterials(classId, links) {
+  const { error: delErr } = await supabase.from('class_materials').delete().eq('class_id', classId)
+  if (delErr) throw delErr
+  if (!links?.length) return
+  const rows = links.map(l => ({ class_id: classId, material_id: l.material_id, is_required: l.is_required !== false }))
+  const { error } = await supabase.from('class_materials').insert(rows)
+  if (error) throw error
+}
+
+/**
+ * Materials a family needs, per student, for a semester (null = all semesters).
+ * Rows: { student_id, student_name, material_id, material_name, description,
+ * price, is_required, purchased, classes }. Admin or the family itself.
+ */
+export async function getFamilyMaterials(familyId, semesterId = null) {
+  const { data, error } = await supabase.rpc('get_family_materials', {
+    p_family_id: familyId, p_semester_id: semesterId,
+  })
+  if (error) throw new Error(error.message)
+  return data || []
+}
+
+/**
+ * Admin: record an in-person materials sale. `items` is
+ * [{ student_id, material_id, semester_id }]. Family credit is applied first and
+ * the remainder recorded as cash received. Returns
+ * { items, total, credit_used, cash_received, new_credit }.
+ */
+export async function purchaseMaterials(familyId, items, note = null, date = null) {
+  const { data, error } = await supabase.rpc('purchase_materials', {
+    p_family_id: familyId, p_items: items, p_note: note, p_date: date,
+  })
+  if (error) throw new Error(error.message)
+  return data
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ENROLLMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -719,6 +784,32 @@ export async function startCreditCheckout(amount) {
     body: { kind: 'add_credit', amount },
   })
   if (error) throw await edgeFunctionError(error, 'Could not start the payment.')
+  return data
+}
+
+/**
+ * Admin: preview how many recipients a Send-Email target resolves to (no send).
+ * target: 'everyone'|'families'|'teachers'|'admins'|'class'|'people'.
+ * Returns { count, sample: string[] }.
+ */
+export async function previewAdminEmail({ target, classId, recipientIds }) {
+  const { data, error } = await supabase.functions.invoke('send-admin-email', {
+    body: { preview: true, target, class_id: classId || null, recipient_ids: recipientIds || [] },
+  })
+  if (error) throw await edgeFunctionError(error, 'Could not resolve recipients.')
+  return data
+}
+
+/**
+ * Admin: send an email to the resolved recipient set. Returns
+ * { sent, failed, total, errors }. Throws a 503-style error if email isn't
+ * configured (RESEND_API_KEY / EMAIL_FROM not set).
+ */
+export async function sendAdminEmail({ target, classId, recipientIds, subject, body }) {
+  const { data, error } = await supabase.functions.invoke('send-admin-email', {
+    body: { target, class_id: classId || null, recipient_ids: recipientIds || [], subject, body },
+  })
+  if (error) throw await edgeFunctionError(error, 'Could not send the email.')
   return data
 }
 

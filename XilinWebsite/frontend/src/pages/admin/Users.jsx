@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Plus, KeyRound, Check, ArrowLeft, Mail, Phone, Hash, BookOpen, GraduationCap, Users as UsersIcon, Home, Pencil, Power } from 'lucide-react'
-import { listProfiles, listFamilies, createAccount, listClasses, getOwnEnrollments, adminUpdateProfile, updateFamilyMember, setAccountActive, getUserEmails } from '../../lib/supabaseClient'
+import { listProfiles, listFamilies, createAccount, listClasses, getOwnEnrollments, adminUpdateProfile, updateFamilyMember, setAccountActive } from '../../lib/supabaseClient'
 import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, ListToolbar, TableSkeleton } from '../../components/ui'
 import ClassScheduleList, { distinctSemesters, SemesterPicker } from '../../components/ClassScheduleList'
 import { useListControls } from '../../hooks/useListControls'
@@ -24,7 +24,6 @@ export default function AdminUsers() {
   const [profiles, setProfiles] = useState([])
   const [families, setFamilies] = useState([])
   const [classes, setClasses] = useState([])
-  const [emails, setEmails] = useState({})
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -39,11 +38,10 @@ export default function AdminUsers() {
   const load = async () => {
     setLoading(true)
     try {
-      const [profileData, familyData, classData, emailMap] = await Promise.all([listProfiles(), listFamilies(), listClasses(), getUserEmails()])
+      const [profileData, familyData, classData] = await Promise.all([listProfiles(), listFamilies(), listClasses()])
       setProfiles(profileData)
       setFamilies(familyData)
       setClasses(classData)
-      setEmails(emailMap)
     } catch (err) {
       setError(err.message)
     } finally {
@@ -84,15 +82,15 @@ export default function AdminUsers() {
   )
   const profileIds = new Set(profiles.map(p => p.id))
   // Members are also rows in `profiles`, so start from there and attach family
-  // info. Staff login emails come from auth.users (via getUserEmails); members
-  // show their family's email.
+  // info. Staff carry their login email on profiles.email directly; members have
+  // no login, so fall back to their family's email.
   const allUsers = [
     ...profiles.map(p => {
       const mi = memberInfo[p.id]
       return {
         ...p,
         familyId: mi?.familyId, familyName: mi?.familyName, familyCode: mi?.familyCode,
-        email: emails[p.id] || mi?.familyEmail || '—',
+        email: p.email || mi?.familyEmail || '—',
       }
     }),
     // Any family member without a standalone profile row (edge case).

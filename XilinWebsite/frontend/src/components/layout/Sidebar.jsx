@@ -2,7 +2,7 @@ import { NavLink, Link } from 'react-router-dom'
 import {
   LayoutDashboard, Megaphone, BookOpen, Clock,
   Home, CreditCard, Users, Settings, LogOut, GraduationCap,
-  ChevronLeft, ChevronRight, Inbox, BarChart3, CalendarDays, FileText
+  ChevronLeft, ChevronRight, Inbox, BarChart3, CalendarDays, FileText, Mail, Package, ShoppingCart
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 
@@ -15,6 +15,7 @@ const NAV_CONFIG = {
     { section: 'Catalog', items: [
       { label: 'Courses',      to: '/courses',        icon: BookOpen },
       { label: 'Classes',      to: '/manage-classes', icon: GraduationCap },
+      { label: 'Materials',    to: '/materials',      icon: Package },
       { label: 'Semesters',    to: '/semesters',      icon: Clock },
     ]},
     { section: 'Academic', items: [
@@ -24,6 +25,8 @@ const NAV_CONFIG = {
       { label: 'Applications', to: '/applications', icon: Inbox },
       { label: 'Families',     to: '/families',     icon: Home },
       { label: 'Users',        to: '/users',        icon: Users },
+      { label: 'Materials Sale', to: '/materials-purchase', icon: ShoppingCart },
+      { label: 'Send Email',   to: '/send-email',   icon: Mail },
       { label: 'Reports',      to: '/reports',      icon: BarChart3 },
       { label: 'About Pages',  to: '/about-pages',  icon: FileText },
     ]},
@@ -52,6 +55,7 @@ const NAV_CONFIG = {
     { section: 'Family', items: [
       { label: 'Members & Classes', to: '/members',          icon: Users },
       { label: 'Timetable',         to: '/child-timetable',  icon: Clock },
+      { label: 'Materials',         to: '/materials',        icon: Package },
     ]},
     { section: 'Finance', items: [
       { label: 'Payments',     to: '/payments',    icon: CreditCard },

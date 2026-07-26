@@ -10,6 +10,7 @@ import { money } from '../../lib/format'
 const METHOD_LABEL = {
   class_payment: 'Class payment', online: 'Card payment', cash: 'Cash payment',
   drop_credit: 'Drop credit', class_credit: 'Refund to credit', adjustment: 'Adjustment',
+  material_purchase: 'Materials',
 }
 
 // Mirrors the edge function's surcharge math: the card fee (2.9% + 30¢) applies
@@ -80,10 +81,10 @@ export default function FamilyPayments() {
   const owed = unpaid.reduce((s, e) => s + Number(e.price_charged || 0), 0)
 
   // Payment history shows actual money movements and credit changes — not the
-  // internal per-class allocation rows (class_payment), which just record credit
-  // being applied to a class. The classes those covered are listed under "Paid
-  // Classes" above.
-  const historyLedger = ledger.filter(t => t.method !== 'class_payment')
+  // internal per-item allocation rows (class_payment / material_purchase), which
+  // just record credit being applied. What those covered is listed under "Paid
+  // Classes" above and on the Materials page.
+  const historyLedger = ledger.filter(t => !['class_payment', 'material_purchase'].includes(t.method))
 
   // Default: everything selected (the "pay in full" case).
   useEffect(() => { setSelected(new Set(unpaid.map(e => e.id))) }, [enrollMap])

@@ -194,7 +194,6 @@ export default function PublicClasses() {
                   ? (isFull(selected) ? 'Full' : `${selected.enrolled}/${selected.max_students} enrolled`)
                   : 'Open'],
                 ['Tuition', selected.price != null ? `${money(selected.price)}/term` : '—'],
-                ['Materials Fee', selected.materials_fee != null ? money(selected.materials_fee) : 'None'],
               ].map(([k, v]) => (
                 <div key={k}>
                   <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-0.5">{k}</p>

@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
-import { getClass, getClassRoster, listCourses, listSemesters, listProfiles, setClassStatus } from '../../lib/supabaseClient'
+import { getClass, getClassRoster, listCourses, listSemesters, listProfiles, setClassStatus, listClassMaterials } from '../../lib/supabaseClient'
 import { Card, Badge, Button, TableSkeleton } from '../../components/ui'
 import ClassFormModal from '../../components/ClassFormModal'
 import { useAuth } from '../../context/AuthContext'
 import { useFeedback } from '../../context/FeedbackContext'
 import { fmtTime, money } from '../../lib/format'
 import { CLASS_STATUS_BADGE as STATUS_BADGE, CLASS_STATUS_LABEL as STATUS_LABEL } from '../../lib/categories'
-import { ArrowLeft, Clock, MapPin, Users, Pencil } from 'lucide-react'
+import { ArrowLeft, Clock, MapPin, Users, Pencil, Package } from 'lucide-react'
 
 const schedule = (c) => c?.day_of_week
   ? `${c.day_of_week} ${fmtTime(c.start_time)}${c.end_time ? `–${fmtTime(c.end_time)}` : ''}`
@@ -27,9 +27,14 @@ export default function ClassDetail() {
   const [editOpen, setEditOpen] = useState(false)
   const [statusBusy, setStatusBusy] = useState(false)
   const [ref, setRef] = useState({ courses: [], semesters: [], teachers: [] }) // for the admin edit form
+  const [materials, setMaterials] = useState([])
 
   const loadRoster = async () => {
     try { setRoster(await getClassRoster(id)) } catch { /* no access */ }
+  }
+
+  const loadMaterials = async () => {
+    try { setMaterials(await listClassMaterials(id)) } catch { setMaterials([]) }
   }
 
   const loadClass = async () => {
@@ -37,6 +42,7 @@ export default function ClassDetail() {
     setCls(c)
     const teaches = (c.class_teachers || []).some(ct => ct.profiles?.id === user.id)
     if (isAdmin || (user.role === 'teacher' && teaches)) await loadRoster()
+    await loadMaterials()
     return c
   }
 
@@ -137,7 +143,6 @@ export default function ClassDetail() {
                 ['Semester', cls.semesters?.name || '—'],
                 ['Grade Range', cls.courses?.grade_level || 'All ages'],
                 ['Tuition', cls.price != null ? `${money(cls.price)}/term` : '—'],
-                ['Materials Fee', cls.materials_fee != null ? money(cls.materials_fee) : 'None'],
               ].map(([k, v]) => (
                 <div key={k}>
                   <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-0.5">{k}</p>
@@ -146,6 +151,65 @@ export default function ClassDetail() {
               ))}
             </div>
           </Card>
+
+          {/* Materials — bought in person at the front office. Admins always see
+              this card (so "none assigned" is distinguishable from "not set up");
+              everyone else only sees it when the class actually has materials. */}
+          {materials.length === 0 && isAdmin && (
+            <Card className="mb-5">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <h3 className="font-display text-base text-slate-900 flex items-center gap-2">
+                  <Package size={16} className="text-slate-300" /> Materials
+                </h3>
+                <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil size={13} /> Assign materials</Button>
+              </div>
+              <p className="text-sm text-slate-400 mt-2">No materials assigned to this class yet.</p>
+            </Card>
+          )}
+          {materials.length > 0 && (() => {
+            const sorted = [...materials].sort((a, b) =>
+              (b.is_required === true) - (a.is_required === true) ||
+              (a.materials?.name || '').localeCompare(b.materials?.name || ''))
+            const requiredTotal = sorted
+              .filter(m => m.is_required)
+              .reduce((s, m) => s + Number(m.materials?.price || 0), 0)
+            return (
+              <Card className="mb-5">
+                <div className="flex items-center justify-between mb-3 gap-3 flex-wrap">
+                  <h3 className="font-display text-base text-slate-900 flex items-center gap-2">
+                    <Package size={16} className="text-yellow-600" /> Materials
+                  </h3>
+                  <span className="flex items-center gap-3">
+                    {requiredTotal > 0 && (
+                      <span className="text-xs text-slate-500">Required total: <span className="font-semibold text-slate-900">{money(requiredTotal)}</span></span>
+                    )}
+                    {isAdmin && (
+                      <Button variant="outline" size="sm" onClick={() => setEditOpen(true)}><Pencil size={13} /> Edit</Button>
+                    )}
+                  </span>
+                </div>
+                <div className="divide-y divide-slate-100 -my-1">
+                  {sorted.map(m => (
+                    <div key={m.material_id} className="flex items-center justify-between gap-3 py-2">
+                      <span className="min-w-0">
+                        <span className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm text-slate-900">{m.materials?.name}</span>
+                          {!m.is_required && <Badge variant="default">Optional</Badge>}
+                        </span>
+                        {m.materials?.description && (
+                          <span className="block text-xs text-slate-400 mt-0.5">{m.materials.description}</span>
+                        )}
+                      </span>
+                      <span className="text-sm font-semibold text-slate-700 flex-shrink-0">{money(m.materials?.price)}</span>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-[11px] text-slate-400 mt-3 pt-3 border-t border-slate-100">
+                  Materials are purchased in person at the front office — they are not included in tuition.
+                </p>
+              </Card>
+            )
+          })()}
 
           {/* Roster — admins + teachers of this class */}
           {roster && (
