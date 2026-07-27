@@ -47,7 +47,9 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
     setMatLoading(true)
     setPicked(new Map())
     Promise.all([
-      listMaterials().catch(() => []),
+      // Include archived items so an archived-but-still-linked material stays
+      // visible (and removable) instead of becoming a phantom in the count.
+      listMaterials(false).catch(() => []),
       editing?.id ? listClassMaterials(editing.id).catch(() => []) : Promise.resolve([]),
     ]).then(([cat, links]) => {
       if (!live) return
@@ -152,7 +154,10 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
                     return (
                       <div key={id} className="flex items-center justify-between gap-2 px-3 py-2 bg-yellow-50/40">
                         <span className="min-w-0">
-                          <span className="block text-sm text-slate-900 truncate">{m.name}</span>
+                          <span className="block text-sm text-slate-900 truncate">
+                            {m.name}
+                            {!m.is_active && <span className="ml-1.5 text-[10px] uppercase tracking-wide text-slate-400 border border-slate-200 rounded px-1 py-0.5">Archived</span>}
+                          </span>
                           <span className="block text-[11px] text-slate-400">{money(m.price)}</span>
                         </span>
                         <span className="flex items-center gap-1.5 flex-shrink-0">
@@ -175,7 +180,8 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
 
               {/* Search + add from the rest of the catalog */}
               {(() => {
-                const available = catalog.filter(m => !picked.has(m.id))
+                // Only active materials can be newly added.
+                const available = catalog.filter(m => !picked.has(m.id) && m.is_active)
                 const q = matQuery.trim().toLowerCase()
                 const shown = q
                   ? available.filter(m => m.name?.toLowerCase().includes(q) || m.description?.toLowerCase().includes(q))

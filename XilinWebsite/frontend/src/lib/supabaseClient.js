@@ -622,12 +622,19 @@ export async function updateMaterial(materialId, updates) {
   return data
 }
 
-/** Materials linked to a class, with the catalog row and required/recommended flag. */
-export async function listClassMaterials(classId) {
-  const { data, error } = await supabase
+/**
+ * Materials linked to a class, with the catalog row and required/optional flag.
+ * `activeOnly` hides archived catalog items — use it anywhere the list is shown
+ * to people (archived materials aren't for sale). Leave it false when editing
+ * the links, so an archived-but-still-linked item isn't silently dropped.
+ */
+export async function listClassMaterials(classId, activeOnly = false) {
+  let query = supabase
     .from('class_materials')
-    .select('material_id, is_required, materials(*)')
+    .select(`material_id, is_required, materials${activeOnly ? '!inner' : ''}(*)`)
     .eq('class_id', classId)
+  if (activeOnly) query = query.eq('materials.is_active', true)
+  const { data, error } = await query
   if (error) throw error
   return data
 }
@@ -912,6 +919,67 @@ export async function updateAboutPage(id, { title, body }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // CALENDAR EVENTS (admin-managed, publicly visible)
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Public: the date-by-date session schedule (the printed-style school-year
+ * calendar). Pass a semester id to scope it, or omit for every semester.
+ * Week numbers are derived at render time, not stored.
+ */
+export async function listCalendarSessions(semesterId = null) {
+  let query = supabase.from('school_calendar_sessions').select('*')
+  if (semesterId) query = query.eq('semester_id', semesterId)
+  const { data, error } = await query.order('session_date', { ascending: true })
+  if (error) throw error
+  return data
+}
+
+/** Admin: add one session row. */
+export async function createCalendarSession(row) {
+  const { data, error } = await supabase.from('school_calendar_sessions').insert(row).select().single()
+  if (error) throw error
+  return data
+}
+
+/** Admin: update a session row (date, has_class, description). */
+export async function updateCalendarSession(id, updates) {
+  const { data, error } = await supabase.from('school_calendar_sessions').update(updates).eq('id', id).select().single()
+  if (error) throw error
+  return data
+}
+
+/** Admin: remove a session row. */
+export async function deleteCalendarSession(id) {
+  const { error } = await supabase.from('school_calendar_sessions').delete().eq('id', id)
+  if (error) throw error
+}
+
+/**
+ * Admin: fill a semester with one row per week, from class_start through
+ * class_end on the same weekday, all marked as having class. Existing dates are
+ * left untouched (so it's safe to re-run after adding holidays). Returns the
+ * number of rows added.
+ */
+export async function generateWeeklySessions(semester) {
+  if (!semester?.class_start || !semester?.class_end) {
+    throw new Error('This semester needs a class start and end date first.')
+  }
+  const rows = []
+  // Parse as local dates to avoid the UTC shift that would move a Sunday to Saturday.
+  const [sy, sm, sd] = semester.class_start.split('-').map(Number)
+  const end = semester.class_end
+  for (let d = new Date(sy, sm - 1, sd); ; d.setDate(d.getDate() + 7)) {
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (iso > end) break
+    rows.push({ semester_id: semester.id, session_date: iso, has_class: true, description: null })
+  }
+  if (!rows.length) return 0
+  const { data, error } = await supabase
+    .from('school_calendar_sessions')
+    .upsert(rows, { onConflict: 'semester_id,session_date', ignoreDuplicates: true })
+    .select('id')
+  if (error) throw error
+  return data?.length || 0
+}
 
 /** Public: list all calendar events (oldest first). */
 export async function listCalendarEvents() {

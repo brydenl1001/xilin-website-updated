@@ -34,7 +34,9 @@ export default function ClassDetail() {
   }
 
   const loadMaterials = async () => {
-    try { setMaterials(await listClassMaterials(id)) } catch { setMaterials([]) }
+    // activeOnly: archived catalog items are no longer sold, so they shouldn't
+    // appear on the class page for anyone.
+    try { setMaterials(await listClassMaterials(id, true)) } catch { setMaterials([]) }
   }
 
   const loadClass = async () => {

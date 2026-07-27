@@ -30,14 +30,14 @@ export default function AdminClasses() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [creating, setCreating] = useState(false)
-  const [semesterFilter, setSemesterFilter] = useState('') // '' until semesters load, then active sem id or 'all'
+  const [semesterFilter, setSemesterFilter] = useState('') // '' until semesters load, then the current semester's id
 
   const load = () => {
     setLoading(true)
     Promise.all([listClasses(), listCourses(), listSemesters(), listProfiles('teacher'), getClassCounts()])
       .then(([cl, co, se, te, cn]) => {
         setClasses(cl); setCourses(co); setSemesters(se); setTeachers(te); setCounts(cn)
-        setSemesterFilter(prev => prev || se.find(s => s.is_active)?.id || 'all')
+        setSemesterFilter(prev => prev || se.find(s => s.is_current)?.id || 'all')
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))

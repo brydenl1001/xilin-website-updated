@@ -5,6 +5,7 @@ import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, T
 import { useListControls } from '../../hooks/useListControls'
 import { useFeedback } from '../../context/FeedbackContext'
 import { semesterEvents, EVENT_CAT } from '../../components/EventCalendar'
+import SessionScheduleEditor from '../../components/SessionScheduleEditor'
 
 const CATEGORY_OPTIONS = [
   { value: 'event', label: 'Event' },
@@ -80,8 +81,12 @@ export default function AdminCalendar() {
 
   return (
     <div className="max-w-5xl animate-fade-in">
-      <PageHeader title="Calendar" subtitle="Events shown on the public home-page calendar"
+      <PageHeader title="Calendar" subtitle="Events and the week-by-week schedule shown on the public home page"
         action={<Button variant="gold" size="sm" onClick={openNew}><Plus size={14} /> New Event</Button>} />
+
+      <div className="mb-6">
+        <SessionScheduleEditor />
+      </div>
 
       {derived.length > 0 && (
         <Card className="mb-5 !p-4 bg-slate-50">

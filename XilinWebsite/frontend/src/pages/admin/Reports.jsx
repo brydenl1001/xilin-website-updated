@@ -39,10 +39,10 @@ export default function AdminReports() {
     Promise.all([listFamilies(), listClasses(), getFamilyOwedMap(), listSemesters()])
       .then(([f, c, o, s]) => {
         setFamilies(f); setClasses(c); setOwedMap(o); setSemesters(s)
-        // Default the financial summary to the current semester if there is one.
+        // Default both semester pickers to the current semester if there is one.
         const current = s.find(x => x.is_current)
-        if (current) setFinSem(current.id)
-        else setFinSem('all')
+        setFinSem(current?.id || 'all')
+        setRosterSem(current?.id || 'all')
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false))

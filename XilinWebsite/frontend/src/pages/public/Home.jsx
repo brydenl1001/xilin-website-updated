@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { schoolInfo } from '../../lib/basicInfo'
-import { listPublicAnnouncements, listAnnouncements, getPublicStats, listSemesters, listCalendarEvents, announcementImages } from '../../lib/supabaseClient'
+import { listPublicAnnouncements, listAnnouncements, getPublicStats, listSemesters, listCalendarEvents, listCalendarSessions, announcementImages } from '../../lib/supabaseClient'
 import { Button } from '../../components/ui'
 import EventCalendar, { semesterEvents } from '../../components/EventCalendar'
+import SchoolYearCalendar from '../../components/SchoolYearCalendar'
 import { ArrowRight, Mail, Globe, BookOpen, Users, GraduationCap } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
@@ -15,6 +16,7 @@ export default function Home() {
   const [stats, setStats] = useState({ studentCount: 0, teacherCount: 0, courseCount: 0, classCount: 0 })
   const [calEvents, setCalEvents] = useState([])
   const [semesters, setSemesters] = useState([])
+  const [sessions, setSessions] = useState([])
 
   useEffect(() => {
     // Signed-in users see internal announcements too.
@@ -27,6 +29,7 @@ export default function Home() {
       .catch(err => console.error('Failed to load stats:', err))
     listSemesters().then(setSemesters).catch(() => {})
     listCalendarEvents().then(setCalEvents).catch(() => {})
+    listCalendarSessions().then(setSessions).catch(() => {})
   }, [user])
 
   const currentSem = semesters.find(s => s.is_current) || semesters.find(s => s.is_active) || semesters[0] || null
@@ -36,6 +39,15 @@ export default function Home() {
     ...calEvents.map(e => ({ date: e.event_date, endDate: e.end_date, title: e.title, category: e.category, description: e.description })),
   ]
   const calInitial = currentSem?.registration_start || calEvents[0]?.event_date || undefined
+
+  // Printed-style year calendar: show the academic year the current semester
+  // belongs to (falling back to the most recent year that has dates entered).
+  const yearOf = currentSem?.academic_year
+    || [...sessions].sort((a, b) => b.session_date.localeCompare(a.session_date))
+        .map(s => semesters.find(x => x.id === s.semester_id)?.academic_year).find(Boolean)
+  const yearSemesters = yearOf ? semesters.filter(s => s.academic_year === yearOf) : []
+  const yearSemesterIds = new Set(yearSemesters.map(s => s.id))
+  const yearSessions = sessions.filter(s => yearSemesterIds.has(s.semester_id))
 
   return (
     <div>
@@ -125,6 +137,13 @@ export default function Home() {
             {currentSem && <span className="text-sm text-slate-400">{currentSem.name}</span>}
           </div>
           <EventCalendar key={calInitial || 'cal'} events={calendarEvents} initialDate={calInitial} />
+
+          {/* Printed-style week-by-week schedule */}
+          {yearSessions.length > 0 && (
+            <div className="mt-8">
+              <SchoolYearCalendar academicYear={yearOf} semesters={yearSemesters} sessions={yearSessions} />
+            </div>
+          )}
         </div>
       </section>
 
