@@ -10,7 +10,7 @@ import ClassPicker from '../../components/ClassPicker'
 import ClassScheduleList, { distinctSemesters, SemesterPicker } from '../../components/ClassScheduleList'
 import { useAuth } from '../../context/AuthContext'
 import { useFeedback } from '../../context/FeedbackContext'
-import { money, fmtTime } from '../../lib/format'
+import { money, fmtTime, personName } from '../../lib/format'
 import { ROLE_VARIANT } from '../../lib/categories'
 import { timesOverlap, inActiveSemester } from '../../lib/schedule'
 
@@ -32,7 +32,7 @@ export default function FamilyMemberDetail() {
   const [picking, setPicking] = useState(false)
   const [semId, setSemId] = useState('')
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ full_name: '', role: 'student', phone: '', date_of_birth: '', gender: '' })
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', role: 'student', phone: '', date_of_birth: '', gender: '' })
   const [editError, setEditError] = useState('')
 
   const member = (family?.family_members || []).map(m => ({ ...m.profiles, relationship: m.relationship })).find(m => m.id === id)
@@ -123,13 +123,14 @@ export default function FamilyMemberDetail() {
 
   const openEdit = () => {
     setEditForm({
-      full_name: member.full_name || '', role: member.relationship === 'parent' ? 'parent' : 'student',
+      first_name: member.first_name || '', last_name: member.last_name || '',
+      role: member.relationship === 'parent' ? 'parent' : 'student',
       phone: member.phone || '', date_of_birth: member.date_of_birth || '', gender: member.gender || '',
     })
     setEditError(''); setEditOpen(true)
   }
   const saveMember = async () => {
-    if (!editForm.full_name.trim()) return
+    if (!editForm.first_name.trim()) return
     setBusy(true); setEditError('')
     try {
       await familyUpdateMember(id, editForm)
@@ -142,14 +143,14 @@ export default function FamilyMemberDetail() {
   const removeMember = async () => {
     if (!(await confirm({
       title: 'Remove member',
-      message: `Remove ${member.full_name}? Any classes they're enrolled in will be dropped (prorated credit returned), and their record will be deleted.`,
+      message: `Remove ${personName(member)}? Any classes they're enrolled in will be dropped (prorated credit returned), and their record will be deleted.`,
       confirmLabel: 'Remove member', danger: true,
     }))) return
     setBusy(true)
     try {
       await removeFamilyMemberFully(user.id, id)
       await refreshUser()
-      toast.success(`${member.full_name} removed.`)
+      toast.success(`${personName(member)} removed.`)
       navigate('/members')
     } catch (err) { toast.error(err.message); setBusy(false) }
   }
@@ -164,7 +165,7 @@ export default function FamilyMemberDetail() {
 
   if (picking) {
     return (
-      <ClassPicker memberName={member.full_name} classes={available} counts={counts} mode="enroll" busy={busy}
+      <ClassPicker memberName={personName(member)} classes={available} counts={counts} mode="enroll" busy={busy}
         onPick={addClasses} onBack={() => setPicking(false)} />
     )
   }
@@ -184,7 +185,7 @@ export default function FamilyMemberDetail() {
       {/* Header */}
       <div className="bg-navy rounded-2xl p-6 mb-5 text-white">
         <div className="flex items-center gap-3 mb-2">
-          <p className="font-display text-2xl">{member.full_name}</p>
+          <p className="font-display text-2xl">{personName(member)}</p>
           <Badge variant={ROLE_VARIANT[member.relationship] || 'default'}>{member.relationship}</Badge>
         </div>
         <div className="flex flex-wrap gap-x-6 gap-y-1 text-sm text-slate-300">
@@ -237,7 +238,10 @@ export default function FamilyMemberDetail() {
       {/* Edit modal */}
       <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Member">
         <div className="space-y-4">
-          <Input label="Full Name" id="md-name" value={editForm.full_name} onChange={e => setEditForm(f => ({ ...f, full_name: e.target.value }))} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="First Name" id="md-first" value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))} required />
+            <Input label="Last Name" id="md-last" value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Select label="Role" id="md-role" value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
               <option value="student">Student</option>
@@ -257,7 +261,7 @@ export default function FamilyMemberDetail() {
           </div>
           {editError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">
-            <Button variant="gold" size="sm" disabled={busy || !editForm.full_name.trim()} onClick={saveMember}>{busy ? 'Saving…' : 'Save Changes'}</Button>
+            <Button variant="gold" size="sm" disabled={busy || !editForm.first_name.trim()} onClick={saveMember}>{busy ? 'Saving…' : 'Save Changes'}</Button>
             <Button variant="outline" size="sm" onClick={() => setEditOpen(false)}>Cancel</Button>
           </div>
         </div>

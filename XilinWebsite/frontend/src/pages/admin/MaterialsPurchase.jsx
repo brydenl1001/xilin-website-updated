@@ -4,7 +4,7 @@ import { listFamilies, listSemesters, listMaterials, getFamilyMaterials, purchas
 import { Button, Card, PageHeader, Select, Input, TableSkeleton, Badge } from '../../components/ui'
 import { SemesterPicker } from '../../components/ClassScheduleList'
 import { useFeedback } from '../../context/FeedbackContext'
-import { money } from '../../lib/format'
+import { money, personName } from '../../lib/format'
 
 const keyOf = (studentId, materialId) => `${studentId}:${materialId}`
 
@@ -194,10 +194,10 @@ export default function AdminMaterialsPurchase() {
                     </span>
                     <span className="flex items-center gap-2 flex-shrink-0">
                       <span className="text-sm font-medium text-slate-700">{money(m.price)}</span>
-                      <select value="" onChange={e => { const sid = e.target.value; if (!sid) return; const mem = members.find(x => x.id === sid); addToCart(sid, mem?.full_name || '', m); e.target.value = '' }}
+                      <select value="" onChange={e => { const sid = e.target.value; if (!sid) return; const mem = members.find(x => x.id === sid); addToCart(sid, personName(mem) || '', m); e.target.value = '' }}
                         className="text-[11px] border border-slate-200 rounded-lg px-2 h-7 bg-white outline-none text-slate-600 cursor-pointer">
                         <option value="">Add for…</option>
-                        {members.map(mem => <option key={mem.id} value={mem.id}>{mem.full_name}</option>)}
+                        {members.map(mem => <option key={mem.id} value={mem.id}>{personName(mem)}</option>)}
                       </select>
                     </span>
                   </div>

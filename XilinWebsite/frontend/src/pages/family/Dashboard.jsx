@@ -4,7 +4,7 @@ import { getOwnFamily, getOwnEnrollments, getEnrollmentsForMembers, listAnnounce
 import { StatCard, Card, Badge, SectionHeader, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { money } from '../../lib/format'
+import { money, personName } from '../../lib/format'
 import { CAT_DOT } from '../../lib/categories'
 import { inActiveSemester } from '../../lib/schedule'
 
@@ -43,7 +43,7 @@ export default function FamilyDashboard() {
   const credit = Math.max(0, Number(family?.credit || 0))
 
   const stats = [
-    { label: 'Enrolled Classes', value: myClasses.length, delta: member?.full_name || '—', trend: 'up', Icon: BookOpen },
+    { label: 'Enrolled Classes', value: myClasses.length, delta: personName(member) || '—', trend: 'up', Icon: BookOpen },
     { label: owed > 0 ? 'Amount Owed' : 'Credit Balance', value: money(owed > 0 ? owed : credit), delta: owed > 0 ? 'Unpaid classes — pay online' : 'All classes paid', trend: owed > 0 ? 'warn' : 'up', Icon: Wallet },
     { label: 'Announcements', value: announcements.length, delta: 'New updates', trend: 'up', Icon: MessageSquare },
   ]
@@ -75,13 +75,13 @@ export default function FamilyDashboard() {
             <p className="text-white/40 text-xs mb-1.5">Viewing</p>
             <select value={memberId} onChange={e => setMemberId(e.target.value)}
               className="bg-transparent text-white font-display text-base outline-none cursor-pointer">
-              {members.map(s => <option key={s.id} value={s.id} className="text-slate-900">{s.full_name}</option>)}
+              {members.map(s => <option key={s.id} value={s.id} className="text-slate-900">{personName(s)}</option>)}
             </select>
           </div>
         ) : (
           <div className="bg-white/5 rounded-xl px-4 py-3 text-right border border-white/10">
             <p className="text-white/40 text-xs mb-0.5">Member</p>
-            <p className="text-white font-display text-base">{member?.full_name}</p>
+            <p className="text-white font-display text-base">{personName(member)}</p>
           </div>
         )}
       </div>

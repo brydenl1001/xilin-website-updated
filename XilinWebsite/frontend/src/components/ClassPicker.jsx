@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ArrowLeft, Clock, MapPin, User, BookOpen, Check, CalendarDays } from 'lucide-react'
 import { Button, Card, Badge, ListToolbar } from './ui'
 import { useListControls } from '../hooks/useListControls'
-import { money, fmtTime } from '../lib/format'
+import { money, fmtTime, personName } from '../lib/format'
 
 const SORT_OPTIONS = [
   { key: 'name', label: 'Name' },
@@ -12,7 +12,7 @@ const SORT_OPTIONS = [
   { key: 'courses.grade_level', label: 'Grade' },
 ]
 
-const leadOf = (c) => c.class_teachers?.find(ct => ct.role === 'lead')?.profiles?.full_name
+const leadOf = (c) => c.class_teachers?.find(ct => ct.role === 'lead')?.personName(profiles)
 
 /**
  * Full-page class browser used when enrolling a member (family + admin). Supports

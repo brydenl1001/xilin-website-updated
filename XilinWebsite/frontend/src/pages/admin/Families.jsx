@@ -13,7 +13,7 @@ import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, Input, Select, L
 import ClassPicker from '../../components/ClassPicker'
 import LedgerDetail from '../../components/LedgerDetail'
 import { useListControls } from '../../hooks/useListControls'
-import { money, fmtTime } from '../../lib/format'
+import { money, fmtTime, personName } from '../../lib/format'
 import { ROLE_VARIANT } from '../../lib/categories'
 import { timesOverlap } from '../../lib/schedule'
 import { useFeedback } from '../../context/FeedbackContext'
@@ -144,10 +144,10 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const [addForm, setAddForm] = useState({ full_name: '', role: 'student' })
+  const [addForm, setAddForm] = useState({ first_name: '', last_name: '', role: 'student' })
   const [addError, setAddError] = useState('')
   const [editMember, setEditMember] = useState(null)
-  const [editForm, setEditForm] = useState({ full_name: '', role: 'student' })
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', role: 'student' })
   const [editError, setEditError] = useState('')
   const [pickingFor, setPickingFor] = useState(null)
 
@@ -175,7 +175,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   const unpaidList = members.flatMap(m =>
     (enrollByMember[m.id] || [])
       .filter(e => e.status === 'enrolled' && !e.paid && e.classes?.status === 'active')
-      .map(e => ({ ...e, memberName: m.full_name }))
+      .map(e => ({ ...e, memberName: personName(m) }))
   )
   const owed = unpaidList.reduce((s, e) => s + Number(e.price_charged || 0), 0)
   const familyActive = family.status !== 'inactive'
@@ -311,11 +311,14 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   }
 
   const addMember = async () => {
-    if (!addForm.full_name.trim()) return
+    if (!addForm.first_name.trim()) return
     setBusy(true); setAddError('')
     try {
-      await createAccount({ kind: 'member', full_name: addForm.full_name.trim(), role: addForm.role, family_id: family.id })
-      setAddOpen(false); setAddForm({ full_name: '', role: 'student' })
+      await createAccount({
+        kind: 'member', first_name: addForm.first_name.trim(), last_name: addForm.last_name.trim(),
+        role: addForm.role, family_id: family.id,
+      })
+      setAddOpen(false); setAddForm({ first_name: '', last_name: '', role: 'student' })
       await onChanged()
     } catch (err) {
       setAddError(err.message)
@@ -327,17 +330,18 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   const openEditMember = (m) => {
     setEditMember(m)
     setEditForm({
-      full_name: m.full_name || '', role: m.relationship === 'student' ? 'student' : 'parent',
+      first_name: m.first_name || '', last_name: m.last_name || '',
+      role: m.relationship === 'student' ? 'student' : 'parent',
       phone: m.phone || '', date_of_birth: m.date_of_birth || '', gender: m.gender || '',
     })
     setEditError('')
   }
   const saveMember = async () => {
-    if (!editForm.full_name.trim()) return
+    if (!editForm.first_name.trim()) return
     setBusy(true); setEditError('')
     try {
       await updateFamilyMember(family.id, editMember.id, {
-        full_name: editForm.full_name.trim(), role: editForm.role,
+        first_name: editForm.first_name.trim(), last_name: editForm.last_name.trim(), role: editForm.role,
         phone: editForm.phone.trim() || null, date_of_birth: editForm.date_of_birth || null, gender: editForm.gender || null,
       })
       setEditMember(null)
@@ -397,14 +401,14 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
   const removeMember = async (m) => {
     if (!(await confirm({
       title: 'Remove member',
-      message: `Remove ${m.full_name} from this family? Any enrolled classes will be dropped (prorated credit returned) and their record permanently deleted.`,
+      message: `Remove ${personName(m)} from this family? Any enrolled classes will be dropped (prorated credit returned) and their record permanently deleted.`,
       confirmLabel: 'Remove member', danger: true,
     }))) return
     setBusy(true)
     try {
       await removeFamilyMemberFully(family.id, m.id)
       await refreshAll()
-      toast.success(`${m.full_name} removed.`)
+      toast.success(`${personName(m)} removed.`)
     } catch (err) {
       toast.error(`Could not remove member: ${err.message}`)
     } finally {
@@ -418,7 +422,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
     const available = classes.filter(c => !taken.has(c.id))
     return (
       <ClassPicker
-        memberName={pickingFor.full_name}
+        memberName={personName(pickingFor)}
         classes={available}
         counts={counts}
         mode="enroll"
@@ -492,7 +496,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
               <Card key={m.id}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <p className="font-medium text-slate-900">{m.full_name}</p>
+                    <p className="font-medium text-slate-900">{personName(m)}</p>
                     <Badge variant={ROLE_VARIANT[m.relationship] || 'default'}>{m.relationship}</Badge>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -666,7 +670,10 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
       {/* Add member modal */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Family Member">
         <div className="space-y-4">
-          <Input label="Full Name" id="mn" value={addForm.full_name} onChange={e => setAddForm(f => ({ ...f, full_name: e.target.value }))} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="First Name" id="mn-first" value={addForm.first_name} onChange={e => setAddForm(f => ({ ...f, first_name: e.target.value }))} required />
+            <Input label="Last Name" id="mn-last" value={addForm.last_name} onChange={e => setAddForm(f => ({ ...f, last_name: e.target.value }))} />
+          </div>
           <Select label="Role" id="mr" value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
             <option value="student">Student</option>
             <option value="parent">Parent / Guardian</option>
@@ -674,7 +681,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
           <p className="text-xs text-slate-400">Members belong to this family and don't sign in directly — the family logs in with its own account.</p>
           {addError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{addError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">
-            <Button variant="gold" size="sm" disabled={busy || !addForm.full_name.trim()} onClick={addMember}>{busy ? 'Adding…' : 'Add Member'}</Button>
+            <Button variant="gold" size="sm" disabled={busy || !addForm.first_name.trim()} onClick={addMember}>{busy ? 'Adding…' : 'Add Member'}</Button>
             <Button variant="outline" size="sm" onClick={() => setAddOpen(false)}>Cancel</Button>
           </div>
         </div>
@@ -683,7 +690,10 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
       {/* Edit member modal */}
       <Modal open={!!editMember} onClose={() => setEditMember(null)} title="Edit Member">
         <div className="space-y-4">
-          <Input label="Full Name" id="emn" value={editForm.full_name} onChange={e => setEditForm(f => ({ ...f, full_name: e.target.value }))} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="First Name" id="emn-first" value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))} required />
+            <Input label="Last Name" id="emn-last" value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Select label="Role" id="emr" value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
               <option value="student">Student</option>
@@ -702,7 +712,7 @@ function FamilyDetail({ family, classes, counts = {}, onBack, onChanged }) {
           </div>
           {editError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">
-            <Button variant="gold" size="sm" disabled={busy || !editForm.full_name.trim()} onClick={saveMember}>{busy ? 'Saving…' : 'Save Changes'}</Button>
+            <Button variant="gold" size="sm" disabled={busy || !editForm.first_name.trim()} onClick={saveMember}>{busy ? 'Saving…' : 'Save Changes'}</Button>
             <Button variant="outline" size="sm" onClick={() => setEditMember(null)}>Cancel</Button>
           </div>
         </div>

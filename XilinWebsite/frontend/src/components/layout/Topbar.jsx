@@ -142,7 +142,7 @@ export default function Topbar({ onSidebarToggle, pathname }) {
         <div className="hidden md:flex items-center gap-2 pl-3 border-l border-slate-200">
           <p className="text-xs text-slate-500 whitespace-nowrap">
             {greeting()},{' '}
-            <span className="text-slate-800 font-medium">{user?.full_name?.split(' ')[0]}</span>
+            <span className="text-slate-800 font-medium">{user?.displayName?.split(' ')[0]}</span>
           </p>
         </div>
       </div>

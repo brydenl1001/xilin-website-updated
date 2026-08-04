@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { Button, ListToolbar, Badge } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { useAuth } from '../../context/AuthContext'
-import { fmtTime } from '../../lib/format'
+import { fmtTime, personName } from '../../lib/format'
 
 const money = (n) => `$${Number(n || 0).toLocaleString()}`
 const schedule = (c) => c.day_of_week
@@ -215,7 +215,7 @@ export default function PublicClasses() {
                     <div className="flex gap-2">
                       <select value={memberId} onChange={e => setMemberId(e.target.value)}
                         className="flex-1 px-3 py-2 text-sm bg-white border border-slate-200 rounded-lg outline-none focus:border-yellow-500">
-                        {members.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.relationship})</option>)}
+                        {members.map(m => <option key={m.id} value={m.id}>{personName(m)} ({m.relationship})</option>)}
                       </select>
                       <Button variant="gold" disabled={enrolling || !memberId} onClick={doEnroll}>
                         {enrolling ? 'Working…' : <><Check size={15} /> {regOpenFor(selected) ? 'Enroll' : 'Request'}</>}

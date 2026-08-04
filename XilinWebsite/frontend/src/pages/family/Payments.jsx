@@ -5,7 +5,7 @@ import { getOwnFamily, getEnrollmentsForMembers, listBalanceTransactions, startC
 import { Button, Card, PageHeader, Table, Tr, Td, TableSkeleton, Badge } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import { useFeedback } from '../../context/FeedbackContext'
-import { money } from '../../lib/format'
+import { money, personName } from '../../lib/format'
 
 const METHOD_LABEL = {
   class_payment: 'Class payment', online: 'Card payment', cash: 'Cash payment',
@@ -65,7 +65,7 @@ export default function FamilyPayments() {
     return () => clearTimeout(timer)
   }, [])
 
-  const memberName = (id) => (family?.family_members || []).find(m => m.profiles?.id === id)?.profiles?.full_name || '—'
+  const memberName = (id) => (family?.family_members || []).find(m => m.profiles?.id === id)?.personName(profiles) || '—'
 
   // Flatten enrollments into unpaid (owed) and paid lists. Only active classes
   // count as owed — canceled/hidden classes are refunded automatically.
@@ -284,7 +284,7 @@ export default function FamilyPayments() {
                       {t.class_id && t.classes?.name
                         ? <Link to={`/class/${t.class_id}`} className="hover:text-yellow-700 hover:underline">{t.classes.name}</Link>
                         : (t.note || '—')}
-                      {t.member?.full_name ? <span className="text-slate-400"> · {t.member.full_name}</span> : null}
+                      {personName(t.member) ? <span className="text-slate-400"> · {personName(t.member)}</span> : null}
                     </Td>
                     <Td><span className={`font-semibold ${Number(t.amount) < 0 ? 'text-slate-600' : 'text-green-600'}`}>{money(t.amount)}</span></Td>
                   </Tr>

@@ -4,6 +4,7 @@ import { Card, PageHeader, TableSkeleton } from '../../components/ui'
 import { useAuth } from '../../context/AuthContext'
 import ClassScheduleList, { distinctSemesters, SemesterPicker } from '../../components/ClassScheduleList'
 import { User } from 'lucide-react'
+import { personName } from '../../lib/format'
 
 export default function Timetable({ subtitle = 'Your classes this semester' }) {
   const { user } = useAuth()
@@ -75,7 +76,7 @@ export default function Timetable({ subtitle = 'Your classes this semester' }) {
               <Card key={member.id} className="!p-0 overflow-hidden">
                 <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-2 bg-slate-50/60">
                   <User size={14} className="text-yellow-600" />
-                  <h3 className="font-display text-base text-slate-900">{member.full_name}</h3>
+                  <h3 className="font-display text-base text-slate-900">{personName(member)}</h3>
                   <span className="text-xs text-slate-400 capitalize">· {member.relationship}</span>
                 </div>
                 <ClassScheduleList classes={classes.filter(inSem)} empty="Not enrolled in any classes this term." />

@@ -8,7 +8,7 @@ import { Card, Button, Input, PageHeader, TableSkeleton } from '../../components
 import { useFeedback } from '../../context/FeedbackContext'
 
 const EMPTY = {
-  full_name: '', family_name: '', phone: '', date_of_birth: '',
+  first_name: '', last_name: '', family_name: '', phone: '', date_of_birth: '',
   street: '', city: '', state: '', postal_code: '', country: '',
 }
 
@@ -40,7 +40,8 @@ export default function Settings() {
       .then(rec => {
         if (!live) return
         setForm({
-          full_name: rec.full_name || '',
+          first_name: rec.first_name || '',
+          last_name: rec.last_name || '',
           family_name: rec.family_name || '',
           phone: rec.phone || '',
           date_of_birth: rec.date_of_birth || '',
@@ -70,7 +71,7 @@ export default function Settings() {
       if (isFamily) {
         await saveOwnFamilyInfo({ family_name: form.family_name, phone: form.phone, ...address })
       } else {
-        await saveOwnProfileInfo({ full_name: form.full_name, phone: form.phone, date_of_birth: form.date_of_birth, ...address })
+        await saveOwnProfileInfo({ first_name: form.first_name, last_name: form.last_name, phone: form.phone, date_of_birth: form.date_of_birth, ...address })
       }
       await refreshUser()
       setSaved(true)
@@ -156,7 +157,10 @@ export default function Settings() {
                 )}
               </>
             ) : (
-              <Input label="Full Name" id="s-name" value={form.full_name} onChange={set('full_name')} />
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="First Name" id="s-first" value={form.first_name} onChange={set('first_name')} required />
+                <Input label="Last Name" id="s-last" value={form.last_name} onChange={set('last_name')} />
+              </div>
             )}
 
             <div className="grid grid-cols-2 gap-3">

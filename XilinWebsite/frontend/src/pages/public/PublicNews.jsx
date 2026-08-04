@@ -3,6 +3,7 @@ import { listPublicAnnouncements, listAnnouncements, announcementImages as image
 import { Lock, X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
+import { personName } from '../../lib/format'
 
 const CATS = ['all', 'events', 'academics', 'general', 'urgent']
 const CAT_BG = { events: 'border-l-amber-400', academics: 'border-l-blue-400', general: 'border-l-slate-300', urgent: 'border-l-red-400' }
@@ -86,7 +87,7 @@ export default function PublicNews() {
                 </span>
               </div>
             </div>
-            <p className="text-xs text-slate-400">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
+            <p className="text-xs text-slate-400">{personName(ann.profiles) || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
             <p className="text-sm text-slate-500 line-clamp-2 mt-1">{ann.body}</p>
             {imgs.length > 0 && (
               <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-thin">
@@ -108,7 +109,7 @@ export default function PublicNews() {
             <button onClick={() => setSelected(null)} className="absolute top-4 right-4 text-slate-300 hover:text-slate-600 cursor-pointer"><X size={18} /></button>
             <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full capitalize ${CAT_BADGE[selected.category]}`}>{selected.category}</span>
             <h2 className="font-display text-2xl text-slate-900 mt-3 mb-1">{selected.title}</h2>
-            <p className="text-xs text-slate-400 mb-4">{selected.profiles?.full_name || 'School Office'} · {selected.published_at?.slice(0, 10)}</p>
+            <p className="text-xs text-slate-400 mb-4">{personName(selected.profiles) || 'School Office'} · {selected.published_at?.slice(0, 10)}</p>
             {images(selected).length > 0 && (
               <div className="space-y-3 mb-4">
                 {images(selected).map((url, i) => (

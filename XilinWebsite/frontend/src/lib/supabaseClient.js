@@ -107,9 +107,9 @@ export async function reviewEnrollmentApplication(applicationId, action) {
 /**
  * Admin: create an account via the `create-account` edge function (service role).
  * payload.kind:
- *   'staff'  → { full_name, email, role: 'admin'|'teacher', password? }
+ *   'staff'  → { first_name, last_name, email, role: 'admin'|'teacher', password? }
  *   'family' → { family_name, email, phone?, password? }
- *   'member' → { full_name, role: 'parent'|'student', family_id, phone? }
+ *   'member' → { first_name, last_name, role: 'parent'|'student', family_id, phone? }
  * Returns { id, temp_password?, emailed? }.
  */
 export async function createAccount(payload) {
@@ -161,7 +161,7 @@ export async function signOut() {
 /**
  * Resolve who is currently logged in.
  * Returns either:
- *   { type: 'profile', id, full_name, role, can_login, ... }
+ *   { type: 'profile', id, first_name, last_name, role, can_login, ... }
  *   { type: 'family',  id, family_name, email, family_members: [...] }
  */
 export async function resolveCurrentIdentity(uid) {
@@ -195,9 +195,10 @@ export async function getProfile(profileId) {
  * only ever touches a safe column whitelist — role/can_login can't be changed.
  * Address is stored as separate parts (street, city, state, postal_code, country).
  */
-export async function saveOwnProfileInfo({ full_name, phone, date_of_birth, street, city, state, postal_code, country }) {
+export async function saveOwnProfileInfo({ first_name, last_name, phone, date_of_birth, street, city, state, postal_code, country }) {
   const { error } = await supabase.rpc('update_own_profile', {
-    p_full_name: full_name ?? null,
+    p_first_name: first_name ?? null,
+    p_last_name: last_name ?? null,
     p_phone: phone ?? null,
     p_date_of_birth: date_of_birth || null,
     p_street: street ?? null,
@@ -245,9 +246,9 @@ export async function changeEmail(newEmail) {
 }
 
 /** Family self-service: add a member (parent/student) to the caller's own family. */
-export async function familyAddMember(full_name, role, { gender, date_of_birth, phone } = {}) {
+export async function familyAddMember(first_name, last_name, role, { gender, date_of_birth, phone } = {}) {
   const { data, error } = await supabase.rpc('family_add_member', {
-    p_full_name: full_name, p_role: role,
+    p_first_name: first_name, p_last_name: last_name ?? null, p_role: role,
     p_gender: gender || null, p_dob: date_of_birth || null, p_phone: phone ?? null,
   })
   if (error) throw new Error(error.message)
@@ -255,9 +256,9 @@ export async function familyAddMember(full_name, role, { gender, date_of_birth, 
 }
 
 /** Family self-service: edit a member of the caller's own family. */
-export async function familyUpdateMember(profileId, { full_name, role, phone, date_of_birth, gender }) {
+export async function familyUpdateMember(profileId, { first_name, last_name, role, phone, date_of_birth, gender }) {
   const { error } = await supabase.rpc('family_update_member', {
-    p_profile_id: profileId, p_full_name: full_name, p_role: role,
+    p_profile_id: profileId, p_first_name: first_name, p_last_name: last_name ?? null, p_role: role,
     p_phone: phone ?? null, p_dob: date_of_birth || null, p_gender: gender || null,
   })
   if (error) throw new Error(error.message)
@@ -334,11 +335,12 @@ export async function updateFamily(familyId, updates) {
 /**
  * Admin: update a family member's info. Keeps the member profile and the
  * family_members relationship in sync. role: 'parent' | 'student'. Any of
- * full_name/role/phone/date_of_birth/gender may be provided.
+ * first_name/last_name/role/phone/date_of_birth/gender may be provided.
  */
-export async function updateFamilyMember(familyId, profileId, { full_name, role, phone, date_of_birth, gender }) {
+export async function updateFamilyMember(familyId, profileId, { first_name, last_name, role, phone, date_of_birth, gender }) {
   const updates = {}
-  if (full_name !== undefined) updates.full_name = full_name
+  if (first_name !== undefined) updates.first_name = first_name
+  if (last_name !== undefined) updates.last_name = last_name || null
   if (role !== undefined) updates.role = role
   if (phone !== undefined) updates.phone = phone
   if (date_of_birth !== undefined) updates.date_of_birth = date_of_birth || null
@@ -363,7 +365,7 @@ export async function updateFamilyMember(familyId, profileId, { full_name, role,
  * Relies on the admin-full-access RLS policy on profiles.
  */
 export async function adminUpdateProfile(profileId, updates) {
-  const allowed = ['full_name', 'role', 'phone', 'date_of_birth', 'gender', 'street', 'city', 'state', 'postal_code', 'country']
+  const allowed = ['first_name', 'last_name', 'role', 'phone', 'date_of_birth', 'gender', 'street', 'city', 'state', 'postal_code', 'country']
   const clean = {}
   for (const k of allowed) if (updates[k] !== undefined) clean[k] = updates[k] === '' ? null : updates[k]
   const { data, error } = await supabase.from('profiles').update(clean).eq('id', profileId).select().single()
@@ -882,7 +884,7 @@ export async function listAllTransactions() {
 export async function listBalanceTransactions(familyId) {
   const { data, error } = await supabase
     .from('balance_transactions')
-    .select('*, classes(name, semester_id, courses(name), semesters(name)), member:member_id(full_name)')
+    .select('*, classes(name, semester_id, courses(name), semesters(name)), member:member_id(first_name, last_name)')
     .eq('family_id', familyId)
     .order('created_at', { ascending: false })
   if (error) throw error
@@ -1035,7 +1037,7 @@ export async function listPublicAnnouncements() {
 export async function listAnnouncements(category = null) {
   let query = supabase
     .from('announcements')
-    .select('*, profiles(full_name)')
+    .select('*, profiles(first_name, last_name)')
 
   if (category) query = query.eq('category', category)
 
@@ -1115,7 +1117,7 @@ export async function deleteAnnouncement(announcementId) {
 //
 //   submitEnrollmentApplication(formData)
 //       → the public /enroll page action. formData shape:
-//           { applicant_type: 'parent'|'student', full_name, email, phone,
+//           { applicant_type: 'parent'|'student', first_name, last_name, email, phone,
 //             dob?, family_mode: 'new'|'existing', family_id?, family_name?,
 //             class_ids: [], notes? }
 //         Creates a pending applicant profile (can_login=false) + a queued

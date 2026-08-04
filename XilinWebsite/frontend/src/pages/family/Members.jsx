@@ -7,6 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import { useFeedback } from '../../context/FeedbackContext'
 import { ROLE_VARIANT } from '../../lib/categories'
 import { inCurrentSemester } from '../../lib/schedule'
+import { personName } from '../../lib/format'
 
 export default function FamilyMembers() {
   const { user, refreshUser } = useAuth()
@@ -16,7 +17,7 @@ export default function FamilyMembers() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState(false)
   const [addOpen, setAddOpen] = useState(false)
-  const [addForm, setAddForm] = useState({ full_name: '', role: 'student', gender: '', date_of_birth: '', phone: '' })
+  const [addForm, setAddForm] = useState({ first_name: '', last_name: '', role: 'student', gender: '', date_of_birth: '', phone: '' })
   const [addError, setAddError] = useState('')
 
   const members = (family?.family_members || []).map(m => ({ ...m.profiles, relationship: m.relationship }))
@@ -39,13 +40,13 @@ export default function FamilyMembers() {
   useEffect(() => { load() }, [user.id])
 
   const addMember = async () => {
-    if (!addForm.full_name.trim()) return
+    if (!addForm.first_name.trim()) return
     setBusy(true); setAddError('')
     try {
-      await familyAddMember(addForm.full_name.trim(), addForm.role, {
+      await familyAddMember(addForm.first_name.trim(), addForm.last_name.trim(), addForm.role, {
         gender: addForm.gender, date_of_birth: addForm.date_of_birth, phone: addForm.phone,
       })
-      setAddOpen(false); setAddForm({ full_name: '', role: 'student', gender: '', date_of_birth: '', phone: '' })
+      setAddOpen(false); setAddForm({ first_name: '', last_name: '', role: 'student', gender: '', date_of_birth: '', phone: '' })
       await refreshUser(); await load()
       toast.success('Member added.')
     } catch (e) {
@@ -71,11 +72,11 @@ export default function FamilyMembers() {
               <Card className="flex items-center justify-between gap-3 hover:border-yellow-300 transition-colors cursor-pointer">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-full bg-navy text-yellow-400 font-display flex items-center justify-center flex-shrink-0">
-                    {(m.full_name || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                    {(personName(m) || '?').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="font-medium text-slate-900 truncate">{m.full_name}</p>
+                      <p className="font-medium text-slate-900 truncate">{personName(m)}</p>
                       <Badge variant={ROLE_VARIANT[m.relationship] || 'default'}>{m.relationship}</Badge>
                     </div>
                     <p className="text-xs text-slate-400 mt-0.5 flex items-center gap-1">
@@ -93,7 +94,10 @@ export default function FamilyMembers() {
       {/* Add member */}
       <Modal open={addOpen} onClose={() => setAddOpen(false)} title="Add Family Member">
         <div className="space-y-4">
-          <Input label="Full Name" id="m-name" value={addForm.full_name} onChange={e => setAddForm(f => ({ ...f, full_name: e.target.value }))} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="First Name" id="m-first" value={addForm.first_name} onChange={e => setAddForm(f => ({ ...f, first_name: e.target.value }))} required />
+            <Input label="Last Name" id="m-last" value={addForm.last_name} onChange={e => setAddForm(f => ({ ...f, last_name: e.target.value }))} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Select label="Role" id="m-role" value={addForm.role} onChange={e => setAddForm(f => ({ ...f, role: e.target.value }))}>
               <option value="student">Student</option>
@@ -114,7 +118,7 @@ export default function FamilyMembers() {
           <p className="text-xs text-slate-400">Both parents and students can be enrolled in classes. Members don't sign in separately — you manage everything from this family account.</p>
           {addError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{addError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">
-            <Button variant="gold" size="sm" disabled={busy || !addForm.full_name.trim()} onClick={addMember}>{busy ? 'Adding…' : 'Add Member'}</Button>
+            <Button variant="gold" size="sm" disabled={busy || !addForm.first_name.trim()} onClick={addMember}>{busy ? 'Adding…' : 'Add Member'}</Button>
             <Button variant="outline" size="sm" onClick={() => setAddOpen(false)}>Cancel</Button>
           </div>
         </div>

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import { personName } from '../lib/format'
 
 /**
  * Renders "Member · Class · Note" for a balance-ledger transaction, linking the
@@ -7,10 +8,10 @@ import { Link } from 'react-router-dom'
  */
 export default function LedgerDetail({ t, memberTo }) {
   const parts = []
-  if (t.member_id && t.member?.full_name) {
+  if (t.member_id && personName(t.member)) {
     parts.push(memberTo
-      ? <Link key="m" to={memberTo(t.member_id)} className="hover:text-yellow-700 hover:underline">{t.member.full_name}</Link>
-      : <span key="m">{t.member.full_name}</span>)
+      ? <Link key="m" to={memberTo(t.member_id)} className="hover:text-yellow-700 hover:underline">{personName(t.member)}</Link>
+      : <span key="m">{personName(t.member)}</span>)
   }
   if (t.class_id && t.classes?.name) {
     parts.push(<Link key="c" to={`/class/${t.class_id}`} className="hover:text-yellow-700 hover:underline">{t.classes.name}</Link>)

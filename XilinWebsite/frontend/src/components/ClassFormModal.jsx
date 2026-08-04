@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Plus, X, Search } from 'lucide-react'
 import { createClass, updateClass, assignTeacherToClass, removeTeacherFromClass, listMaterials, listClassMaterials, setClassMaterials } from '../lib/supabaseClient'
 import { Button, Modal, Input, Select } from './ui'
-import { fmtTime, money } from '../lib/format'
+import { fmtTime, money, personName } from '../lib/format'
 
 const CLASS_DAY = 'Sunday' // classes are held on Sundays
 const leadOf = (cls) => cls?.class_teachers?.find(ct => ct.role === 'lead')?.profiles || null
@@ -127,7 +127,7 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
           <Input label="Tuition ($)" id="price" type="number" placeholder="e.g. 320" value={form.price} onChange={set('price')} />
           <Select label="Lead Teacher" id="lead" value={form.lead_teacher_id} onChange={set('lead_teacher_id')}>
             <option value="">Unassigned</option>
-            {teachers.map(t => <option key={t.id} value={t.id}>{t.full_name}</option>)}
+            {teachers.map(t => <option key={t.id} value={t.id}>{personName(t)}</option>)}
           </Select>
         </div>
 

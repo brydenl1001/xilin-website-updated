@@ -3,6 +3,7 @@ import { Mail, Users, Home, GraduationCap, Shield, BookOpen, UserPlus, Send, X, 
 import { listFamilies, listProfiles, listClasses, previewAdminEmail, sendAdminEmail } from '../../lib/supabaseClient'
 import { Button, Card, PageHeader, Input, Select, Textarea } from '../../components/ui'
 import { useFeedback } from '../../context/FeedbackContext'
+import { personName } from '../../lib/format'
 
 const GROUP_TARGETS = [
   { val: 'everyone', label: 'Everyone', hint: 'All families & staff', Icon: Users },
@@ -45,7 +46,7 @@ export default function AdminSendEmail() {
   // Combined pickable list for "Specific people": families + staff profiles.
   const people = [
     ...families.map(f => ({ id: f.id, label: f.family_name, sub: `Family · ID ${f.family_code || '—'}` })),
-    ...staff.map(p => ({ id: p.id, label: p.full_name, sub: p.role === 'admin' ? 'Admin' : 'Teacher' })),
+    ...staff.map(p => ({ id: p.id, label: personName(p), sub: p.role === 'admin' ? 'Admin' : 'Teacher' })),
   ]
   const peopleFiltered = peopleQuery.trim()
     ? people.filter(p => p.label?.toLowerCase().includes(peopleQuery.trim().toLowerCase()))

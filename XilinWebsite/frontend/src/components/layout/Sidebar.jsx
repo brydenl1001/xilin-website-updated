@@ -156,9 +156,9 @@ export default function Sidebar({ collapsed, onToggle }) {
       <div className="p-3 border-t border-white/8">
         {!collapsed ? (
           <div className="flex items-center gap-2.5">
-            <Initials name={user.full_name} />
+            <Initials name={user?.displayName} />
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] text-white font-medium truncate">{user.full_name}</p>
+              <p className="text-[12px] text-white font-medium truncate">{user?.displayName}</p>
               <span className={`text-[9px] capitalize font-medium px-1.5 py-0.5 rounded ${ROLE_BADGE[user.role]}`}>
                 {user.role}
               </span>

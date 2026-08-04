@@ -4,6 +4,7 @@ import { listProfiles, listEnrollmentApplications, listFamilies, listAnnouncemen
 import { StatCard, Card, Badge, Button, SectionHeader, Skeleton, TableSkeleton } from '../../components/ui'
 import { Link } from 'react-router-dom'
 import { CAT_DOT } from '../../lib/categories'
+import { personName } from '../../lib/format'
 
 const money = (n) => `$${Math.abs(Number(n || 0)).toFixed(2)}`
 
@@ -85,7 +86,7 @@ export default function AdminDashboard() {
               <div className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${CAT_DOT[ann.category]}`} />
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-slate-900 truncate">{ann.title}</p>
-                <p className="text-[11px] text-slate-400 mt-0.5">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
+                <p className="text-[11px] text-slate-400 mt-0.5">{personName(ann.profiles) || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
               </div>
               <Badge variant={ann.category}>{ann.category}</Badge>
             </div>

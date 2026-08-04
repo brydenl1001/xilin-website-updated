@@ -49,7 +49,7 @@ export default function PublicEnroll() {
 
   const [form, setForm] = useState({
     applicant_type: 'parent',   // 'parent' | 'student'
-    full_name: '', email: '', phone: '', dob: '',
+    first_name: '', last_name: '', email: '', phone: '', dob: '',
     family_mode: 'new',         // 'new' | 'existing'
     family_id: '', family_name: '',
     password: '', password_confirm: '',
@@ -103,7 +103,7 @@ export default function PublicEnroll() {
     setReference('')
     setErrors({})
     setForm({
-      applicant_type: 'parent', full_name: '', email: '', phone: '', dob: '',
+      applicant_type: 'parent', first_name: '', last_name: '', email: '', phone: '', dob: '',
       family_mode: 'new', family_id: '', family_name: '', password: '', password_confirm: '', class_ids: [], notes: '',
     })
   }
@@ -115,7 +115,8 @@ export default function PublicEnroll() {
   const validateStep = (s) => {
     const e = {}
     if (s === 0) {
-      if (!form.full_name.trim()) e.full_name = 'Please enter your full name.'
+      if (!form.first_name.trim()) e.first_name = 'Please enter your first name.'
+      if (!form.last_name.trim()) e.last_name = 'Please enter your last name.'
       if (!form.email.trim()) e.email = 'Please enter your email address.'
       else if (!EMAIL_RE.test(form.email.trim())) e.email = 'Please enter a valid email address.'
     }
@@ -208,7 +209,10 @@ export default function PublicEnroll() {
                 ))}
               </div>
             </div>
-            <Input label="Full Name" id="fname" placeholder="e.g. Maria Adeyemi" value={form.full_name} onChange={set('full_name')} required error={errors.full_name} />
+            <div className="grid grid-cols-2 gap-3">
+              <Input label="First Name" id="fname" placeholder="e.g. Maria" value={form.first_name} onChange={set('first_name')} required error={errors.first_name} />
+              <Input label="Last Name" id="lname" placeholder="e.g. Adeyemi" value={form.last_name} onChange={set('last_name')} required error={errors.last_name} />
+            </div>
             <Input label="Email Address" id="email" type="email" placeholder="you@email.com" value={form.email} onChange={set('email')} required error={errors.email} />
             <Input label="Phone Number" id="phone" type="tel" placeholder="(312) 000-0000" value={form.phone} onChange={set('phone')} />
             {form.applicant_type === 'student' && (
@@ -341,7 +345,7 @@ export default function PublicEnroll() {
             <div className="bg-slate-50 rounded-xl p-5 space-y-3">
               {[
                 ['Applying As', form.applicant_type === 'parent' ? 'Parent / Guardian' : 'Student'],
-                ['Full Name', form.full_name],
+                ['Name', [form.first_name, form.last_name].filter(Boolean).join(' ')],
                 ['Email', form.email],
                 ['Phone', form.phone || 'Not provided'],
                 ...(form.applicant_type === 'student' ? [['Date of Birth', form.dob || 'Not provided']] : []),

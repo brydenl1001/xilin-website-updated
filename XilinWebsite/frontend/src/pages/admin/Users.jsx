@@ -7,8 +7,9 @@ import ClassScheduleList, { distinctSemesters, SemesterPicker } from '../../comp
 import { useListControls } from '../../hooks/useListControls'
 import { ROLE_VARIANT } from '../../lib/categories'
 import { useFeedback } from '../../context/FeedbackContext'
+import { personName } from '../../lib/format'
 
-const SORT_OPTIONS = [{ key: 'full_name', label: 'Name' }, { key: 'role', label: 'Role' }]
+const SORT_OPTIONS = [{ key: 'first_name', label: 'Name' }, { key: 'role', label: 'Role' }]
 const ROLE_OPTIONS = ['admin', 'teacher', 'student']
 
 const KINDS = [
@@ -16,7 +17,7 @@ const KINDS = [
   { val: 'family', label: 'Family login',  hint: 'Household account parents sign in with' },
   { val: 'member', label: 'Family member', hint: 'Student or parent under a family (no login)' },
 ]
-const BLANK = { kind: 'staff', full_name: '', family_name: '', email: '', phone: '', role: 'teacher', family_id: '', password: '' }
+const BLANK = { kind: 'staff', first_name: '', last_name: '', family_name: '', email: '', phone: '', role: 'teacher', family_id: '', password: '' }
 
 export default function AdminUsers() {
   const { id } = useParams()
@@ -58,9 +59,9 @@ export default function AdminUsers() {
     try {
       const k = form.kind
       const payload =
-        k === 'staff'  ? { kind: k, full_name: form.full_name, email: form.email, role: form.role, password: form.password || undefined, phone: form.phone }
+        k === 'staff'  ? { kind: k, first_name: form.first_name, last_name: form.last_name, email: form.email, role: form.role, password: form.password || undefined, phone: form.phone }
       : k === 'family' ? { kind: k, family_name: form.family_name, email: form.email, phone: form.phone, password: form.password || undefined }
-      :                  { kind: k, full_name: form.full_name, role: form.role === 'admin' || form.role === 'teacher' ? 'student' : form.role, family_id: form.family_id, phone: form.phone }
+      :                  { kind: k, first_name: form.first_name, last_name: form.last_name, role: form.role === 'admin' || form.role === 'teacher' ? 'student' : form.role, family_id: form.family_id, phone: form.phone }
       const res = await createAccount(payload)
       setResult(res)
       await load()
@@ -97,7 +98,8 @@ export default function AdminUsers() {
     ...families.flatMap(f => (f.family_members || [])
       .filter(m => m.profiles?.id && !profileIds.has(m.profiles.id))
       .map(m => ({
-        id: m.profiles.id, full_name: m.profiles.full_name,
+        id: m.profiles.id,
+        first_name: m.profiles.first_name, last_name: m.profiles.last_name,
         role: m.profiles.role || m.relationship, phone: m.profiles.phone || null,
         is_active: m.profiles.is_active, date_of_birth: m.profiles.date_of_birth || null,
         gender: m.profiles.gender || null,
@@ -110,7 +112,7 @@ export default function AdminUsers() {
     : allUsers.filter(u => u.is_active !== false)
   const roleFiltered = roleFilter === 'all' ? statusFiltered : statusFiltered.filter(u => u.role === roleFilter)
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
-    useListControls(roleFiltered, { searchKeys: ['full_name', 'email', 'familyName'], sortOptions: SORT_OPTIONS })
+    useListControls(roleFiltered, { searchKeys: ['first_name', 'last_name', 'email', 'familyName'], sortOptions: SORT_OPTIONS })
 
   const counts = { admin: 0, teacher: 0, student: 0, parent: 0 }
   allUsers.forEach(u => { if (counts[u.role] !== undefined) counts[u.role]++ })
@@ -172,7 +174,7 @@ export default function AdminUsers() {
               <Tr key={u.id || i} onClick={() => u.id && navigate(`/users/${u.id}`)}>
                 <Td>
                   <p className="font-medium text-slate-900 flex items-center gap-2">
-                    {u.full_name}
+                    {personName(u)}
                     {u.is_active === false && <span className="text-[10px] uppercase tracking-wide text-slate-400 border border-slate-200 rounded px-1.5 py-0.5">Inactive</span>}
                   </p>
                 </Td>
@@ -226,7 +228,10 @@ export default function AdminUsers() {
 
             {form.kind === 'staff' && (
               <>
-                <Input label="Full Name" id="fn" value={form.full_name} onChange={set('full_name')} required />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="First Name" id="fn-first" value={form.first_name} onChange={set('first_name')} required />
+                  <Input label="Last Name" id="fn-last" value={form.last_name} onChange={set('last_name')} />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Input label="Email" id="em" type="email" value={form.email} onChange={set('email')} required />
                   <Select label="Role" id="rl" value={form.role} onChange={set('role')}>
@@ -249,7 +254,10 @@ export default function AdminUsers() {
 
             {form.kind === 'member' && (
               <>
-                <Input label="Full Name" id="fn" value={form.full_name} onChange={set('full_name')} required />
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="First Name" id="mfn-first" value={form.first_name} onChange={set('first_name')} required />
+                  <Input label="Last Name" id="mfn-last" value={form.last_name} onChange={set('last_name')} />
+                </div>
                 <div className="grid grid-cols-2 gap-3">
                   <Select label="Member Role" id="mr" value={memberRoleValue} onChange={set('role')}>
                     <option value="student">Student</option>
@@ -297,13 +305,14 @@ function UserDetail({ user, families, classes, onBack, onChanged }) {
   const [semId, setSemId] = useState('')
 
   const [editOpen, setEditOpen] = useState(false)
-  const [editForm, setEditForm] = useState({ full_name: '', role: '', phone: '', date_of_birth: '', gender: '' })
+  const [editForm, setEditForm] = useState({ first_name: '', last_name: '', role: '', phone: '', date_of_birth: '', gender: '' })
   const [editError, setEditError] = useState('')
   const [busy, setBusy] = useState(false)
 
   const openEdit = () => {
     setEditForm({
-      full_name: user.full_name || '',
+      first_name: user.first_name || '',
+      last_name: user.last_name || '',
       role: user.role || (isStaff ? 'teacher' : 'student'),
       phone: user.phone || '',
       date_of_birth: user.date_of_birth || '',
@@ -312,11 +321,11 @@ function UserDetail({ user, families, classes, onBack, onChanged }) {
     setEditError(''); setEditOpen(true)
   }
   const saveEdit = async () => {
-    if (!editForm.full_name.trim()) { setEditError('Name is required.'); return }
+    if (!editForm.first_name.trim()) { setEditError('First name is required.'); return }
     setBusy(true); setEditError('')
     try {
       const patch = {
-        full_name: editForm.full_name.trim(), role: editForm.role,
+        first_name: editForm.first_name.trim(), last_name: editForm.last_name.trim(), role: editForm.role,
         phone: editForm.phone.trim() || null, date_of_birth: editForm.date_of_birth || null, gender: editForm.gender || null,
       }
       if (isMember && family) await updateFamilyMember(family.id, user.id, patch)
@@ -335,7 +344,7 @@ function UserDetail({ user, families, classes, onBack, onChanged }) {
     const next = !active
     if (!next && !(await confirm({
       title: 'Deactivate account',
-      message: `Deactivate ${user.full_name}? ${isStaff ? 'They will be signed out and unable to log in.' : 'They will be hidden from the active list.'} The record is kept and can be reactivated anytime.`,
+      message: `Deactivate ${personName(user)}? ${isStaff ? 'They will be signed out and unable to log in.' : 'They will be hidden from the active list.'} The record is kept and can be reactivated anytime.`,
       confirmLabel: 'Deactivate', danger: true,
     }))) return
     setBusy(true)
@@ -384,7 +393,7 @@ function UserDetail({ user, families, classes, onBack, onChanged }) {
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="flex items-center gap-3 mb-2 flex-wrap">
-              <p className="font-display text-2xl">{user.full_name}</p>
+              <p className="font-display text-2xl">{personName(user)}</p>
               <Badge variant={ROLE_VARIANT[user.role]}>{user.role}</Badge>
               {!active && <span className="text-[11px] uppercase tracking-wide text-white/60 border border-white/25 rounded px-1.5 py-0.5">Inactive</span>}
             </div>
@@ -418,7 +427,10 @@ function UserDetail({ user, families, classes, onBack, onChanged }) {
       {/* Edit account modal */}
       <Modal open={editOpen} onClose={() => setEditOpen(false)} title="Edit Account">
         <div className="space-y-4">
-          <Input label="Full Name" id="efn" value={editForm.full_name} onChange={e => setEditForm(f => ({ ...f, full_name: e.target.value }))} required />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="First Name" id="efn-first" value={editForm.first_name} onChange={e => setEditForm(f => ({ ...f, first_name: e.target.value }))} required />
+            <Input label="Last Name" id="efn-last" value={editForm.last_name} onChange={e => setEditForm(f => ({ ...f, last_name: e.target.value }))} />
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Select label="Role" id="erl" value={editForm.role} onChange={e => setEditForm(f => ({ ...f, role: e.target.value }))}>
               {isStaff ? <>
@@ -445,7 +457,7 @@ function UserDetail({ user, families, classes, onBack, onChanged }) {
           )}
           {editError && <p className="text-xs text-red-600 bg-red-50 border border-red-200 rounded-lg px-3 py-2">{editError}</p>}
           <div className="flex gap-2 pt-2 border-t border-slate-100">
-            <Button variant="gold" size="sm" disabled={busy || !editForm.full_name.trim()} onClick={saveEdit}>{busy ? 'Saving…' : 'Save Changes'}</Button>
+            <Button variant="gold" size="sm" disabled={busy || !editForm.first_name.trim()} onClick={saveEdit}>{busy ? 'Saving…' : 'Save Changes'}</Button>
             <Button variant="outline" size="sm" onClick={() => setEditOpen(false)}>Cancel</Button>
           </div>
         </div>

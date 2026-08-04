@@ -5,7 +5,7 @@ import { Card, Badge, Button, TableSkeleton } from '../../components/ui'
 import ClassFormModal from '../../components/ClassFormModal'
 import { useAuth } from '../../context/AuthContext'
 import { useFeedback } from '../../context/FeedbackContext'
-import { fmtTime, money } from '../../lib/format'
+import { fmtTime, money, personName } from '../../lib/format'
 import { CLASS_STATUS_BADGE as STATUS_BADGE, CLASS_STATUS_LABEL as STATUS_LABEL } from '../../lib/categories'
 import { ArrowLeft, Clock, MapPin, Users, Pencil, Package } from 'lucide-react'
 
@@ -138,7 +138,7 @@ export default function ClassDetail() {
               {[
                 ['Course', cls.courses?.name || '—'],
                 ['Teacher', leadProfile
-                  ? (isAdmin ? <Link to={`/users/${leadProfile.id}`} className="text-slate-900 hover:text-yellow-700 hover:underline">{leadProfile.full_name}</Link> : leadProfile.full_name)
+                  ? (isAdmin ? <Link to={`/users/${leadProfile.id}`} className="text-slate-900 hover:text-yellow-700 hover:underline">{personName(leadProfile)}</Link> : personName(leadProfile))
                   : 'To be announced'],
                 ['Schedule', schedule(cls)],
                 ['Room', cls.room || '—'],

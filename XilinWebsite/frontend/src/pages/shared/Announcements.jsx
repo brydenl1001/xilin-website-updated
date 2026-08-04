@@ -5,6 +5,7 @@ import { Badge, Button, Modal, Input, Select, Textarea, PageHeader, ListToolbar,
 import { useListControls } from '../../hooks/useListControls'
 import { useAuth } from '../../context/AuthContext'
 import { useFeedback } from '../../context/FeedbackContext'
+import { personName } from '../../lib/format'
 
 const CATS = ['all', 'urgent', 'events', 'academics', 'general']
 const BORDER = { urgent: 'border-l-red-400', events: 'border-l-amber-400', academics: 'border-l-blue-400', general: 'border-l-slate-300' }
@@ -148,7 +149,7 @@ export default function Announcements() {
                 )}
               </div>
             </div>
-            <p className="text-xs text-slate-400">{ann.profiles?.full_name || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
+            <p className="text-xs text-slate-400">{personName(ann.profiles) || 'School Office'} · {ann.published_at?.slice(0, 10)}</p>
             <p className="text-sm text-slate-500 line-clamp-2 mt-1">{ann.body}</p>
             {imagesOf(ann).length > 0 && (
               <div className="flex gap-2 mt-3 overflow-x-auto scrollbar-thin">
@@ -169,7 +170,7 @@ export default function Announcements() {
             <div className="flex items-center gap-2">
               {!viewing.is_public && <Badge variant="default">Internal</Badge>}
               <Badge variant={viewing.category}>{viewing.category}</Badge>
-              <span className="text-xs text-slate-400">{viewing.profiles?.full_name || 'School Office'} · {viewing.published_at?.slice(0, 10)}</span>
+              <span className="text-xs text-slate-400">{personName(viewing.profiles) || 'School Office'} · {viewing.published_at?.slice(0, 10)}</span>
             </div>
             {imagesOf(viewing).length > 0 && (
               <div className="space-y-3">

@@ -1,12 +1,13 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase, resolveCurrentIdentity, signIn as supaSignIn, signOut as supaSignOut } from '../lib/supabaseClient'
+import { personName } from '../lib/format'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const navigate = useNavigate()
-  // identity: { type: 'profile', id, full_name, role, ... }
+  // identity: { type: 'profile', id, first_name, last_name, role, ... }
   //        or { type: 'family',  id, family_name, family_members: [...] }
   const [identity, setIdentity] = useState(null)
   // The signed-in email lives on the auth session, not on the profiles row
@@ -84,13 +85,23 @@ export function AuthProvider({ children }) {
   // ─── Normalized `user` shape for the rest of the app ───────────────────────
   // type 'profile' → role is admin/teacher (staff logins), use fields directly
   // type 'family'  → synthetic role 'family' (household login), plus members
+  // `displayName` is what the chrome shows: a person's "First Last" for staff,
+  // the household name for a family login.
   const user = !identity
     ? null
     : identity.type === 'profile'
-      ? { id: identity.id, full_name: identity.full_name, role: identity.role, email: identity.email || authEmail, avatar_url: identity.avatar_url }
+      ? {
+          id: identity.id,
+          first_name: identity.first_name,
+          last_name: identity.last_name,
+          displayName: personName(identity),
+          role: identity.role,
+          email: identity.email || authEmail,
+          avatar_url: identity.avatar_url,
+        }
       : {
           id: identity.id,
-          full_name: identity.family_name,
+          displayName: identity.family_name,
           role: 'family',
           email: identity.email || authEmail,
           avatar_url: null,

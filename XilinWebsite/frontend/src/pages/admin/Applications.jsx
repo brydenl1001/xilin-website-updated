@@ -3,12 +3,13 @@ import { Eye, Check, X, ShieldCheck, KeyRound, Users, UserPlus } from 'lucide-re
 import { listEnrollmentApplications, reviewEnrollmentApplication, listPublicClasses } from '../../lib/supabaseClient'
 import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
+import { personName } from '../../lib/format'
 
 const STATUS_ORDER = ['pending', 'approved', 'rejected']
 const STATUS_BADGE = { pending: 'warning', approved: 'enrolled', rejected: 'rejected' }
 const SORT_OPTIONS = [
   { key: 'created_at', label: 'Applied' },
-  { key: 'full_name', label: 'Name' },
+  { key: 'first_name', label: 'Name' },
   { key: 'applicant_type', label: 'Type' },
 ]
 
@@ -39,7 +40,7 @@ export default function AdminApplications() {
 
   const statusFiltered = filter === 'all' ? apps : apps.filter(a => a.status === filter)
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
-    useListControls(statusFiltered, { searchKeys: ['full_name', 'email', 'family_name'], sortOptions: SORT_OPTIONS, initialDir: 'desc' })
+    useListControls(statusFiltered, { searchKeys: ['first_name', 'last_name', 'email', 'family_name'], sortOptions: SORT_OPTIONS, initialDir: 'desc' })
 
   const counts = STATUS_ORDER.reduce((acc, s) => { acc[s] = apps.filter(a => a.status === s).length; return acc }, {})
 
@@ -100,7 +101,7 @@ export default function AdminApplications() {
             ) : filtered.map(a => (
               <Tr key={a.id} onClick={() => { setSelected(a); setResult(null) }}>
                 <Td>
-                  <p className="font-medium text-slate-900">{a.full_name}</p>
+                  <p className="font-medium text-slate-900">{personName(a)}</p>
                   <p className="text-xs text-slate-400">{a.email}</p>
                 </Td>
                 <Td className="capitalize text-slate-600">{a.applicant_type}</Td>
@@ -125,10 +126,10 @@ export default function AdminApplications() {
             {/* Header */}
             <div className="flex items-center gap-3 pb-4 border-b border-slate-100">
               <div className="w-11 h-11 rounded-full bg-yellow-100 text-yellow-700 flex items-center justify-center font-semibold flex-shrink-0">
-                {selected.full_name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                {personName(selected)?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="font-display text-lg text-slate-900 leading-tight truncate">{selected.full_name}</p>
+                <p className="font-display text-lg text-slate-900 leading-tight truncate">{personName(selected)}</p>
                 <p className="text-xs text-slate-400">
                   {selected.applicant_type === 'parent' ? 'Parent / Guardian' : 'Student'} · Applied {selected.created_at?.slice(0, 10)}
                 </p>

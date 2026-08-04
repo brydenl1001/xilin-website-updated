@@ -7,7 +7,7 @@ import {
 import { Badge, Button, Card, PageHeader, Table, Tr, Td, ListToolbar, TableSkeleton } from '../../components/ui'
 import ClassFormModal from '../../components/ClassFormModal'
 import { useListControls } from '../../hooks/useListControls'
-import { fmtTime } from '../../lib/format'
+import { fmtTime, personName } from '../../lib/format'
 import { CLASS_STATUS_BADGE as STATUS_BADGE, CLASS_STATUS_LABEL as STATUS_LABEL } from '../../lib/categories'
 
 const SORT_OPTIONS = [
@@ -92,7 +92,7 @@ export default function AdminClasses() {
                   </Td>
                   <Td className="text-slate-600">
                     {leadOf(c)
-                      ? <Link to={`/users/${leadOf(c).id}`} onClick={e => e.stopPropagation()} className="hover:text-yellow-700 hover:underline">{leadOf(c).full_name}</Link>
+                      ? <Link to={`/users/${leadOf(c).id}`} onClick={e => e.stopPropagation()} className="hover:text-yellow-700 hover:underline">{personName(leadOf(c))}</Link>
                       : <span className="text-slate-300">Unassigned</span>}
                   </Td>
                   <Td><Badge variant={STATUS_BADGE[c.status] || 'default'}>{STATUS_LABEL[c.status] || c.status}</Badge></Td>

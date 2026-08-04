@@ -12,3 +12,13 @@ export function money(n) {
 export function fmtTime(t) {
   return t ? t.slice(0, 5) : ''
 }
+
+/**
+ * Display name for a person record. Names are stored as separate first_name /
+ * last_name columns — this composes them for display ("First Last").
+ * Accepts any object with those fields; returns '' when both are missing.
+ */
+export function personName(p) {
+  if (!p) return ''
+  return [p.first_name, p.last_name].filter(Boolean).join(' ').trim()
+}

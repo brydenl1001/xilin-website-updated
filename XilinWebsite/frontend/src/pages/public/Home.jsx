@@ -7,6 +7,7 @@ import EventCalendar, { semesterEvents } from '../../components/EventCalendar'
 import SchoolYearCalendar from '../../components/SchoolYearCalendar'
 import { ArrowRight, Mail, Globe, BookOpen, Users, GraduationCap } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
+import { personName } from '../../lib/format'
 const CAT_COLOR = { events: 'bg-amber-100 text-amber-700', academics: 'bg-blue-100 text-blue-700', general: 'bg-slate-100 text-slate-600', urgent: 'bg-red-100 text-red-700' }
 
 export default function Home() {
@@ -178,7 +179,7 @@ export default function Home() {
                   </div>
                   <h3 className="font-display text-[15px] text-slate-900 leading-snug mb-2">{ann.title}</h3>
                   <p className="text-sm text-slate-500 line-clamp-2">{ann.body}</p>
-                  <p className="text-xs text-slate-400 mt-3">{ann.profiles?.full_name || 'School Office'}</p>
+                  <p className="text-xs text-slate-400 mt-3">{personName(ann.profiles) || 'School Office'}</p>
                 </div>
               </Link>
               )
