@@ -60,7 +60,7 @@ function SemesterTable({ semester, sessions }) {
  *   semesters — the semesters of a single academic year (ordered by class_start)
  *   sessions  — every session row for those semesters
  */
-export default function SchoolYearCalendar({ academicYear, semesters = [], sessions = [], tentative = true }) {
+export default function SchoolYearCalendar({ academicYear, semesters = [], sessions = [] }) {
   if (semesters.length === 0) return null
   const ordered = [...semesters].sort((a, b) => (a.class_start || '').localeCompare(b.class_start || ''))
   const lastUpdated = sessions.reduce((max, s) => (s.updated_at > max ? s.updated_at : max), '')
@@ -77,7 +77,7 @@ export default function SchoolYearCalendar({ academicYear, semesters = [], sessi
         ))}
       </div>
       <div className="flex justify-between items-center gap-3 flex-wrap mt-3 text-[11px] text-slate-400">
-        <span>{tentative ? 'Tentative plan only 计划日期.' : ''}</span>
+        <span>Tentative plan only 计划日期.</span>
         {lastUpdated && <span>(Updated on {fmtCalDate(lastUpdated.slice(0, 10))}, subject to change.)</span>}
       </div>
     </div>

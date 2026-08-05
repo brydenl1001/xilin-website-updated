@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, Pencil, Trash2, Upload, X } from 'lucide-react'
-import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters, uploadAnnouncementMedia, announcementImages as imagesOf } from '../../lib/supabaseClient'
+import { listAnnouncements, createAnnouncement, updateAnnouncement, deleteAnnouncement, listSemesters, uploadAnnouncementMedia, announcementImages as imagesOf, notifyEmail } from '../../lib/supabaseClient'
 import { Badge, Button, Modal, Input, Select, Textarea, PageHeader, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { useAuth } from '../../context/AuthContext'
@@ -82,7 +82,13 @@ export default function Announcements() {
       else await createAnnouncement({ ...payload, author_id: user.id })
       setShowModal(false); setForm(BLANK); setEditingId(null)
       load()
-      toast.success(editingId ? 'Announcement updated.' : 'Announcement published.')
+      // Urgent notices are emailed out; everything else is portal-only, so the
+      // inbox doesn't fill up with routine posts.
+      const emailing = !editingId && payload.category === 'urgent'
+      if (emailing) notifyEmail('urgent_announcement', { title: payload.title, body: payload.body })
+      toast.success(editingId ? 'Announcement updated.'
+        : emailing ? 'Urgent announcement published and emailed to everyone.'
+        : 'Announcement published.')
     } catch (err) {
       toast.error(`Failed to save: ${err.message}`)
     } finally {

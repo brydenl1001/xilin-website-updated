@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
-import { familyLogin } from '../../lib/supabaseClient'
+import { familyLogin, requestPasswordReset } from '../../lib/supabaseClient'
 import { Button, Input } from '../../components/ui'
 import { ArrowLeft } from 'lucide-react'
 
@@ -12,6 +12,9 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
+  // Forgot-password mode reuses the same identifier field.
+  const [forgot, setForgot] = useState(false)
+  const [sent, setSent] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -32,6 +35,22 @@ export default function Login() {
       setLoading(false)
     }
   }
+
+  const handleReset = async (e) => {
+    e.preventDefault()
+    if (!identifier.trim()) return setError('Enter your email, family name, or Family ID.')
+    setLoading(true); setError(''); setSent('')
+    try {
+      const res = await requestPasswordReset(identifier.trim())
+      setSent(res?.message || 'If an account matches that, we’ve sent a password reset link to its email address.')
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const toggleForgot = (on) => { setForgot(on); setError(''); setSent(''); setPassword('') }
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
@@ -77,22 +96,48 @@ export default function Login() {
             </div>
           </div>
 
-          <h2 className="font-display text-3xl text-slate-900 mb-1">Welcome back</h2>
-          <p className="text-slate-400 text-sm mb-8">Sign in to your school portal</p>
-
-          <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-            <Input label="Email, family name, or Family ID" id="identifier" placeholder="you@email.com, family name, or 4-digit ID" value={identifier} onChange={e => setIdentifier(e.target.value)} required />
-            <Input label="Password" id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
-            {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
-            <Button type="submit" variant="gold" className="w-full" disabled={loading}>
-              {loading ? 'Signing in…' : 'Sign In'}
-            </Button>
-          </form>
-          <p className="text-[11px] text-slate-400 text-center mb-2">Staff sign in with email · families with their family name or 4-digit Family ID.</p>
-
-          <p className="text-xs text-slate-400 text-center">
-            Forgot your password? Contact the school office for a reset.
+          <h2 className="font-display text-3xl text-slate-900 mb-1">{forgot ? 'Reset your password' : 'Welcome back'}</h2>
+          <p className="text-slate-400 text-sm mb-8">
+            {forgot ? 'We’ll email a reset link to the address on your account' : 'Sign in to your school portal'}
           </p>
+
+          {forgot ? (
+            <>
+              <form onSubmit={handleReset} className="space-y-4 mb-6">
+                <Input label="Email, family name, or Family ID" id="identifier" placeholder="you@email.com, family name, or 4-digit ID"
+                  value={identifier} onChange={e => setIdentifier(e.target.value)} required disabled={!!sent} />
+                {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+                {sent
+                  ? <p className="text-xs text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg">{sent}</p>
+                  : <Button type="submit" variant="gold" className="w-full" disabled={loading}>
+                      {loading ? 'Sending…' : 'Send reset link'}
+                    </Button>}
+              </form>
+              <p className="text-xs text-slate-400 text-center">
+                <button type="button" onClick={() => toggleForgot(false)} className="text-yellow-600 hover:text-yellow-700 font-medium cursor-pointer">
+                  ← Back to sign in
+                </button>
+              </p>
+            </>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+                <Input label="Email, family name, or Family ID" id="identifier" placeholder="you@email.com, family name, or 4-digit ID" value={identifier} onChange={e => setIdentifier(e.target.value)} required />
+                <Input label="Password" id="password" type="password" value={password} onChange={e => setPassword(e.target.value)} required />
+                {error && <p className="text-xs text-red-500 bg-red-50 px-3 py-2 rounded-lg">{error}</p>}
+                <Button type="submit" variant="gold" className="w-full" disabled={loading}>
+                  {loading ? 'Signing in…' : 'Sign In'}
+                </Button>
+              </form>
+              <p className="text-[11px] text-slate-400 text-center mb-2">Staff sign in with email · families with their family name or 4-digit Family ID.</p>
+
+              <p className="text-xs text-slate-400 text-center">
+                <button type="button" onClick={() => toggleForgot(true)} className="text-yellow-600 hover:text-yellow-700 font-medium cursor-pointer">
+                  Forgot your password?
+                </button>
+              </p>
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -11,6 +11,7 @@ import PublicNews    from '../pages/public/PublicNews'
 import PublicClasses from '../pages/public/PublicClasses'
 import PublicEnroll  from '../pages/public/PublicEnroll'
 import Login         from '../pages/public/Login'
+import ResetPassword from '../pages/public/ResetPassword'
 import NotFound      from '../pages/public/NotFound'
 
 // Shared portal pages
@@ -135,6 +136,9 @@ function AppRoutes() {
       <Route path="/classes" element={<PublicLayout><PublicClasses /></PublicLayout>} />
       <Route path="/enroll" element={<PublicLayout><PublicEnroll /></PublicLayout>} />
       <Route path="/login" element={<RedirectIfAuth><Login /></RedirectIfAuth>} />
+      {/* Deliberately NOT behind RedirectIfAuth: the recovery link establishes a
+          session, which would otherwise bounce straight to the dashboard. */}
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       {/* Authenticated portal */}
       <Route path="/*" element={<RequireAuth><PortalRoutes /></RequireAuth>} />

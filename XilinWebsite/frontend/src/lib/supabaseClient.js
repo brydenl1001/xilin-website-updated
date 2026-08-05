@@ -228,6 +228,18 @@ export async function saveOwnFamilyInfo({ family_name, phone, street, city, stat
   if (error) throw new Error(error.message)
 }
 
+/**
+ * Public: ask for a password reset link. `identifier` is whatever they sign in
+ * with — a staff email, a family name, or a 4-digit Family ID. Always resolves
+ * with the same generic message whether or not an account matched, so this can't
+ * be used to discover who has an account.
+ */
+export async function requestPasswordReset(identifier) {
+  const { data, error } = await supabase.functions.invoke('request-password-reset', { body: { identifier } })
+  if (error) throw await edgeFunctionError(error, 'Could not send the reset link.')
+  return data
+}
+
 /** Self-service: change the signed-in account's password (family, teacher, or admin). */
 export async function changePassword(newPassword) {
   const { error } = await supabase.auth.updateUser({ password: newPassword })
@@ -462,8 +474,6 @@ export async function listCourses() {
   return data
 }
 
-/** Public: list courses for the unauthenticated /classes page. Delegates to listCourses. */
-export function listPublicCourses() { return listCourses() }
 
 /**
  * Public: list running class instances for the active semester (the /classes
@@ -573,6 +583,11 @@ export async function updateClass(classId, updates) {
 export async function setClassStatus(classId, status) {
   const { error } = await supabase.rpc('set_class_status', { p_class_id: classId, p_status: status })
   if (error) throw new Error(error.message)
+  // Tell enrolled families a class is no longer running. The DB trigger has
+  // already returned any paid tuition to their credit.
+  if (status === 'canceled' || status === 'inactive') {
+    notifyEmail('class_changed', { class_id: classId, change: status })
+  }
 }
 
 /** Admin: assign a teacher to a class. role: 'lead' | 'assistant' | 'substitute'. */
@@ -747,7 +762,27 @@ export async function payEnrollments(familyId, enrollmentIds, method, note = nul
     p_family_id: familyId, p_enrollment_ids: enrollmentIds, p_method: method, p_note: note, p_date: date,
   })
   if (error) throw new Error(error.message)
+  // Receipt for in-person/credit payments. Card payments are receipted by the
+  // stripe-webhook instead, once Stripe confirms them.
+  notifyEmail('payment_receipt', {
+    family_id: familyId,
+    amount: data?.total,
+    method,
+    credit_used: data?.credit_used || null,
+    cash_received: data?.cash_received || null,
+  })
   return data
+}
+
+/**
+ * Fire a transactional email through the shared `notify` edge function.
+ * Deliberately fire-and-forget and never throws: an email problem must never
+ * fail (or appear to fail) the action that triggered it. Admin-only server-side.
+ */
+export function notifyEmail(kind, payload = {}) {
+  return supabase.functions
+    .invoke('notify', { body: { kind, ...payload } })
+    .catch(err => { console.error(`notify(${kind}) failed:`, err?.message); return null })
 }
 
 /** The fixed reasons an admin must choose from when manually adjusting credit. */
@@ -766,6 +801,7 @@ export async function adjustCredit(familyId, amount, reason, note = null, date =
     p_family_id: familyId, p_amount: amount, p_reason: reason, p_note: note, p_date: date,
   })
   if (error) throw new Error(error.message)
+  notifyEmail('credit_adjusted', { family_id: familyId, amount, reason, note })
   return data
 }
 
@@ -870,15 +906,6 @@ export async function getClassRoster(classId) {
   return data
 }
 
-/** Admin: all ledger transactions (for the financial summary report). */
-export async function listAllTransactions() {
-  const { data, error } = await supabase
-    .from('balance_transactions')
-    .select('amount, method, created_at')
-    .order('created_at', { ascending: false })
-  if (error) throw error
-  return data
-}
 
 /** Family/admin: list a family's balance ledger (immutable audit trail), newest first. */
 export async function listBalanceTransactions(familyId) {
@@ -1118,12 +1145,11 @@ export async function deleteAnnouncement(announcementId) {
 //   submitEnrollmentApplication(formData)
 //       → the public /enroll page action. formData shape:
 //           { applicant_type: 'parent'|'student', first_name, last_name, email, phone,
-//             dob?, family_mode: 'new'|'existing', family_id?, family_name?,
-//             class_ids: [], notes? }
+//             dob?, family_mode: 'new'|'existing', family_id?, family_name?, notes? }
 //         Creates a pending applicant profile (can_login=false) + a queued
-//         family link (existing) or new family record (new) + one pending
-//         enrollment row per class_id. Nothing is activated until an admin
-//         approves it.
+//         family link (existing) or new family record (new). Applicants do NOT
+//         pick classes — the family chooses those from the portal once approved.
+//         Nothing is activated until an admin approves it.
 //
 //   approveEnrollmentFully(enrollmentId, classId, familyId)
 //       → updates enrollment status + assigns class + links family_members

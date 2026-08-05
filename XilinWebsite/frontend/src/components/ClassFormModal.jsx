@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, X, Search } from 'lucide-react'
-import { createClass, updateClass, assignTeacherToClass, removeTeacherFromClass, listMaterials, listClassMaterials, setClassMaterials } from '../lib/supabaseClient'
+import { createClass, updateClass, assignTeacherToClass, removeTeacherFromClass, listMaterials, listClassMaterials, setClassMaterials, notifyEmail } from '../lib/supabaseClient'
 import { Button, Modal, Input, Select } from './ui'
 import { fmtTime, money, personName } from '../lib/format'
 
@@ -90,6 +90,16 @@ export default function ClassFormModal({ open, editing, courses = [], semesters 
       }
       // Replace the class's material links (works for both create and edit).
       await setClassMaterials(classId, [...picked].map(([material_id, is_required]) => ({ material_id, is_required })))
+
+      // A tuition change moves money (the DB trigger refunds paid families to
+      // credit), so tell everyone enrolled which way it went.
+      if (editing?.id) {
+        const before = Number(editing.price ?? 0)
+        const after = Number(payload.price ?? 0)
+        if (after !== before) {
+          notifyEmail('class_changed', { class_id: classId, change: after > before ? 'price_up' : 'price_down' })
+        }
+      }
       onSaved?.(saved)
     } catch (e) {
       setSaveError(e.message)

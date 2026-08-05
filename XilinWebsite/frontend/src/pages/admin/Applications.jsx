@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Eye, Check, X, ShieldCheck, KeyRound, Users, UserPlus } from 'lucide-react'
-import { listEnrollmentApplications, reviewEnrollmentApplication, listPublicClasses } from '../../lib/supabaseClient'
+import { listEnrollmentApplications, reviewEnrollmentApplication } from '../../lib/supabaseClient'
 import { Badge, Button, Card, Modal, PageHeader, Table, Tr, Td, ListToolbar, TableSkeleton } from '../../components/ui'
 import { useListControls } from '../../hooks/useListControls'
 import { personName } from '../../lib/format'
@@ -15,13 +15,12 @@ const SORT_OPTIONS = [
 
 export default function AdminApplications() {
   const [apps, setApps] = useState([])
-  const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [filter, setFilter] = useState('pending')
   const [selected, setSelected] = useState(null)
   const [working, setWorking] = useState(false)
-  const [result, setResult] = useState(null) // { status, temp_password, enrolled }
+  const [result, setResult] = useState(null) // { status, temp_password }
 
   const load = () => {
     setLoading(true)
@@ -31,12 +30,7 @@ export default function AdminApplications() {
       .finally(() => setLoading(false))
   }
 
-  useEffect(() => {
-    load()
-    listPublicClasses().then(setClasses).catch(() => {})
-  }, [])
-
-  const className = (id) => classes.find(c => c.id === id)?.name || 'Unknown class'
+  useEffect(() => { load() }, [])
 
   const statusFiltered = filter === 'all' ? apps : apps.filter(a => a.status === filter)
   const { query, setQuery, sortKey, setSortKey, sortDir, toggleDir, result: filtered } =
@@ -70,8 +64,8 @@ export default function AdminApplications() {
       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 mb-5 flex items-start gap-3">
         <ShieldCheck size={16} className="text-yellow-600 flex-shrink-0 mt-0.5" />
         <p className="text-sm text-yellow-800">
-          Approving an application creates the family login (for new families), a member profile, the family link,
-          and enrollments into the chosen classes. Nothing is activated until you approve.
+          Approving an application creates the family login (for new families), a member profile and the family link.
+          The family then chooses their classes from their own portal. Nothing is activated until you approve.
         </p>
       </div>
 
@@ -154,18 +148,6 @@ export default function AdminApplications() {
               ))}
             </div>
 
-            {/* Requested classes */}
-            <div>
-              <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-2">Requested Classes</p>
-              {selected.desired_class_ids?.length ? (
-                <div className="flex flex-wrap gap-1.5">
-                  {selected.desired_class_ids.map(id => (
-                    <span key={id} className="text-xs px-2.5 py-1 rounded-full bg-yellow-100 text-yellow-700 font-medium">{className(id)}</span>
-                  ))}
-                </div>
-              ) : <p className="text-sm text-slate-400">None selected</p>}
-            </div>
-
             {selected.notes && (
               <div>
                 <p className="text-[11px] uppercase tracking-wide text-slate-400 mb-1">Notes</p>
@@ -181,12 +163,7 @@ export default function AdminApplications() {
             )}
             {result?.status === 'approved' && (
               <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-800 space-y-1.5">
-                <p className="flex items-center gap-2 font-medium"><Check size={14} /> Approved — {result.enrolled} class{result.enrolled !== 1 ? 'es' : ''} enrolled.</p>
-                {result.enroll_failures?.length > 0 && (
-                  <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">
-                    {result.enroll_failures.length} requested class{result.enroll_failures.length !== 1 ? 'es' : ''} could not be enrolled: {result.enroll_failures.join('; ')}
-                  </p>
-                )}
+                <p className="flex items-center gap-2 font-medium"><Check size={14} /> Approved — account created.</p>
                 {result.family_code && (
                   <p className="flex items-center gap-2 text-xs">
                     Family ID (sign-in): <span className="font-mono font-semibold bg-white px-1.5 py-0.5 rounded border border-green-200">{result.family_code}</span>
