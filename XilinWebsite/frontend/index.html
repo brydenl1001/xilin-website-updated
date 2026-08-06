@@ -11,6 +11,23 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // A password-reset link carries its token in the URL hash and should land
+      // on /reset-password. If Supabase falls back to the Site URL — which it
+      // does whenever the redirect target isn't in the Auth "Redirect URLs"
+      // allowlist — the token arrives at the site root instead, and supabase-js
+      // would quietly sign the visitor in with a recovery session on the home
+      // page rather than letting them set a new password. Forward it, hash
+      // intact. This is a plain script so it runs before the deferred module
+      // below: the Supabase client doesn't exist yet and can't consume the token.
+      // A dead link comes back as an error hash instead of a token — that one
+      // goes straight to the expired screen.
+      if (location.pathname !== '/reset-password' && /type=recovery/.test(location.hash)) {
+        location.replace('/reset-password' + location.search + location.hash)
+      } else if (location.pathname !== '/link-expired' && /error_code=otp_expired/.test(location.hash)) {
+        location.replace('/link-expired')
+      }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

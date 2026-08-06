@@ -12,7 +12,6 @@ import { ArrowLeft, Eye, EyeOff, CheckCircle2 } from 'lucide-react'
 export default function ResetPassword() {
   const navigate = useNavigate()
   const [ready, setReady] = useState(false)   // recovery session established?
-  const [checking, setChecking] = useState(true)
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
   const [showPw, setShowPw] = useState(false)
@@ -22,18 +21,27 @@ export default function ResetPassword() {
 
   useEffect(() => {
     let live = true
+    let timer
+    const expired = () => { if (live) navigate('/link-expired', { replace: true }) }
+
+    // Supabase reports a spent or expired token in the hash and never creates a
+    // session, so there's nothing to wait for.
+    if (/error/.test(window.location.hash)) { expired(); return }
+
     // The token may still be being exchanged when we mount, so listen as well as
     // checking once.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
-      if (live && session) { setReady(true); setChecking(false) }
+      if (live && session) { clearTimeout(timer); setReady(true) }
     })
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!live) return
+      // No session yet: give the exchange a moment to land before giving up on
+      // the link, otherwise a slow round-trip looks like an expired one.
       if (session) setReady(true)
-      setChecking(false)
+      else timer = setTimeout(expired, 2500)
     })
-    return () => { live = false; subscription.unsubscribe() }
-  }, [])
+    return () => { live = false; clearTimeout(timer); subscription.unsubscribe() }
+  }, [navigate])
 
   const submit = async (e) => {
     e.preventDefault()
@@ -70,16 +78,8 @@ export default function ResetPassword() {
             <p className="text-slate-500 text-sm mb-6">You can now sign in with your new password.</p>
             <Button variant="gold" className="w-full" onClick={() => navigate('/login')}>Go to sign in</Button>
           </>
-        ) : checking ? (
-          <p className="text-slate-400 text-sm">Checking your reset link…</p>
         ) : !ready ? (
-          <>
-            <h2 className="font-display text-3xl text-slate-900 mb-1">Link expired</h2>
-            <p className="text-slate-500 text-sm mb-6">
-              This password reset link is invalid or has already been used. Reset links expire about an hour after they're sent.
-            </p>
-            <Button variant="gold" className="w-full" onClick={() => navigate('/login')}>Request a new link</Button>
-          </>
+          <p className="text-slate-400 text-sm">Checking your reset link…</p>
         ) : (
           <>
             <h2 className="font-display text-3xl text-slate-900 mb-1">Choose a new password</h2>

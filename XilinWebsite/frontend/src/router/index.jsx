@@ -12,6 +12,7 @@ import PublicClasses from '../pages/public/PublicClasses'
 import PublicEnroll  from '../pages/public/PublicEnroll'
 import Login         from '../pages/public/Login'
 import ResetPassword from '../pages/public/ResetPassword'
+import LinkExpired   from '../pages/public/LinkExpired'
 import NotFound      from '../pages/public/NotFound'
 
 // Shared portal pages
@@ -139,6 +140,9 @@ function AppRoutes() {
       {/* Deliberately NOT behind RedirectIfAuth: the recovery link establishes a
           session, which would otherwise bounce straight to the dashboard. */}
       <Route path="/reset-password" element={<ResetPassword />} />
+      {/* Where a spent or expired recovery link ends up. Also outside
+          RedirectIfAuth — a half-finished reset can leave a session behind. */}
+      <Route path="/link-expired" element={<LinkExpired />} />
 
       {/* Authenticated portal */}
       <Route path="/*" element={<RequireAuth><PortalRoutes /></RequireAuth>} />

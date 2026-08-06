@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { familyLogin, requestPasswordReset } from '../../lib/supabaseClient'
 import { Button, Input } from '../../components/ui'
@@ -12,8 +12,10 @@ export default function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
-  // Forgot-password mode reuses the same identifier field.
-  const [forgot, setForgot] = useState(false)
+  // Forgot-password mode reuses the same identifier field. `?forgot=1` opens it
+  // directly — that's how /link-expired hands people back here.
+  const [params] = useSearchParams()
+  const [forgot, setForgot] = useState(params.get('forgot') === '1')
   const [sent, setSent] = useState('')
 
   const handleSubmit = async (e) => {
